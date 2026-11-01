@@ -6,6 +6,11 @@ NEW URL, NEW template, or NEW view — never as an edit to this file.
 
 ---
 
+## Scope note
+The "Top 15" is the **Malaysian** Top 15. Player pool = osu! accounts
+with country code "MY" only (Step 33 enforces this). Any eligible voter
+(join_date < 2026-01-01) may vote for any 15 active Malaysian players.
+
 ## A1 — Data model fields
 
 Django models live in `core/models.py`. Field types below are final.
@@ -82,12 +87,14 @@ Constraints:
 | id | BigAutoField | PK |
 | user | FK → OsuUser | on_delete CASCADE |
 | player | FK → Player | on_delete CASCADE |
+| cycle | FK → VotingCycle | on_delete CASCADE |
 | body | TextField | max_length 500 (enforced on model + form) |
 | created_at | DateTimeField | auto_now_add |
 | updated_at | DateTimeField | auto_now |
 
-Constraint: UniqueConstraint(user, player, name="unique_comment_per_user_player")
-Note: comments are NOT cycle-scoped; cycle filtering happens at export.
+Constraint: UniqueConstraint(user, player, cycle, name="unique_comment_per_user_player_cycle")
+Note: comments are cycle-scoped. Upserts with cycle=active_cycle.
+Filters by cycle at export. Comment rows are never deleted across cycles.
 
 ### A1.7 ShareLink
 | Field | Type | Notes |
@@ -205,3 +212,5 @@ Authorize URL (client-side redirect): https://osu.ppy.sh/oauth/authorize
 | SEARCH_MIN_CHARS | 2 |
 | SEARCH_RESULT_LIMIT | 20 |
 | RANKINGS_PER_PAGE | 50 |
+| PLAYER_POOL_COUNTRY | "MY" — Malaysian players only; never international |
+| PP_MIN_POOL_ENTRY | 8000 — refresh_players stops paging once a player's pp < 8000 |
