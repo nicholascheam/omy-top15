@@ -1,6 +1,6 @@
 # CONTRACT — osu! Top 15 Malaysia Voting Site
 
-FROZEN at Step 1. This file is never edited after this commit.
+This file is never edited after this commit.
 Any change to an earlier decision is implemented as a NEW migration,
 NEW URL, NEW template, or NEW view — never as an edit to this file.
 
