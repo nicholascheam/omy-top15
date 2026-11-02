@@ -3,4 +3,10 @@
 {% block content %}
     <h2>Welcome to the Voting Site!</h2>
     <p>This is a temporary homepage stub. The real homepage is built in Step 91.</p>
+    
+    <!-- TEMPORARY LOGOUT TEST FORM -->
+    <form action="{% url 'logout' %}" method="POST" style="margin-top: 20px;">
+        {% csrf_token %}
+        <button type="submit">Log Out (Test)</button>
+    </form>
 {% endblock %}
