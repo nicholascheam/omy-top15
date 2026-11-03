@@ -2,10 +2,13 @@ import logging
 import requests
 import urllib.parse
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
-from core.models import OsuUser
+from django.db import transaction
+from core.models import OsuUser, Ballot, Player, VotingCycle, BallotEntry, Comment
+from core.forms import BallotForm
 from core.decorators import osu_login_required
 from core.osu import (
     OSU_CLIENT_ID, 
@@ -95,5 +98,138 @@ def logout_view(request):
     return redirect("home")
 
 @osu_login_required
-def protected_test(request):
-    return HttpResponse(f"Welcome to the secret area, {request.osu_user.username}!")
+def vote(request):
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    if not active_cycle:
+        return HttpResponse("There is no active voting cycle right now.", status=404)
+
+    if active_cycle.end_time <= timezone.now():
+        if request.method == "POST":
+            # If they try to submit data after the deadline, block it with a 403
+            return HttpResponseForbidden("Voting has closed for this cycle. You can no longer submit or edit your ballot.")
+        else:
+            # If they just visit the page, show a closed message
+            return HttpResponse("<h2>Voting is Closed</h2><p>The deadline for this cycle has passed.</p>", status=403)
+
+    existing_ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
+    
+    # If they already voted and are just visiting /vote, redirect to my_ballot
+    if existing_ballot and request.method == "GET" and not request.GET.get("edit"):
+        return redirect("my_ballot")
+
+    if request.method == "POST":
+        form = BallotForm(request.POST, request=request, cycle=active_cycle)
+        
+        if form.is_valid():
+            entries_data = form.cleaned_data["entries"]
+            comments_data = form.cleaned_data.get("comments") or {}
+
+            player_ids = [entry["player_id"] for entry in entries_data]
+
+            if Player.objects.filter(id__in=player_ids, osu_user_id=request.osu_user.osu_user_id).exists():
+
+                return HttpResponseForbidden("You cannot vote for yourself.")
+
+            with transaction.atomic():
+                ballot, created = Ballot.objects.update_or_create(
+                    user=request.osu_user, 
+                    cycle=active_cycle, 
+                    defaults={}
+                )
+                
+                ballot.entries.all().delete()
+                
+                new_entries = []
+                for entry in entries_data:
+                    points = 16 - int(entry["rank"])
+                    new_entries.append(
+                        BallotEntry(
+                            ballot=ballot,
+                            player_id=entry["player_id"],
+                            rank_position=int(entry["rank"]),
+                            points=points
+                        )
+                    )
+                BallotEntry.objects.bulk_create(new_entries)
+
+                for p_id_str, body in comments_data.items():
+                    if body.strip():
+                        Comment.objects.update_or_create(
+                            user=request.osu_user,
+                            player_id=int(p_id_str),
+                            cycle=active_cycle,
+                            defaults={"body": body}
+                        )
+
+            return redirect("/my-ballot?submitted=1")
+    else:
+        # GET request: We pass 'is_edit' to the template
+        is_edit = request.GET.get("edit") == "1" and existing_ballot is not None
+        form = BallotForm(request=request, cycle=active_cycle)
+
+    return render(request, "vote.html", {"form": form, "cycle": active_cycle, "is_edit": is_edit if request.method == "GET" else False})
+
+@osu_login_required
+def my_ballot(request):
+    # 1. Find the active cycle
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    if not active_cycle:
+        return HttpResponse("There is no active voting cycle right now.", status=404)
+
+    # 2. Try to find this specific user's ballot
+    ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
+    
+    # 3. Handle the empty state (they haven't voted yet)
+    if not ballot:
+        return render(request, "my_ballot.html", {"ballot": None, "cycle": active_cycle})
+
+    # 4. Fetch the entries ordered by rank
+    entries = ballot.entries.select_related("player").order_by("rank_position")
+    
+    # 5. Fetch this user's comments for this cycle
+    comments = Comment.objects.filter(user=request.osu_user, cycle=active_cycle)
+    comment_dict = {c.player_id: c.body for c in comments}
+
+    # 6. Attach the comment to the entry object so the template can easily read it
+    for entry in entries:
+        entry.comment_body = comment_dict.get(entry.player_id, "")
+
+    return render(request, "my_ballot.html", {
+        "ballot": ballot, 
+        "entries": entries, 
+        "cycle": active_cycle
+    })
+
+@osu_login_required
+def edit_ballot(request):
+    # Simply redirect to the vote view with ?edit=1
+    return redirect("/vote?edit=1")
+
+@osu_login_required
+def search_players(request):
+    query = request.GET.get("q", "").strip()
+    
+    # If the query is exactly 1 character, return empty (avoiding huge queries)
+    if len(query) == 1:
+        return JsonResponse({"results": []})
+        
+    players = Player.objects.filter(is_active=True)
+    
+    # If they typed 2+ characters, filter by name. Otherwise, just get the top 50.
+    if len(query) >= 2:
+        players = players.filter(username__icontains=query)
+        
+    players = players.order_by("-current_pp")[:150] 
+
+    results = [
+        {
+            "id": p.id,
+            "username": p.username,
+            "pp": p.current_pp,
+            "avatar_url": p.avatar_url
+        }
+        for p in players
+    ]
+    
+    return JsonResponse({"results": results})
+

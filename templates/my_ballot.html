@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    {% if request.GET.submitted == '1' %}
+        <div style="background-color: #d4edda; color: #155724; padding: 15px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 5px;">
+            <strong>Success!</strong> Your ballot has been saved.
+        </div>
+    {% endif %}
+
+    <h2>My Ballot - {{ cycle.name }}</h2>
+    
+    {% if not ballot %}
+        <div style="text-align: center; padding: 50px; border: 1px solid #ddd; margin-top: 20px;">
+            <h3>You haven't submitted a ballot yet!</h3>
+            <p>You need to select 15 players to participate.</p>
+            <a href="{% url 'vote' %}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Go to Voting Page</a>
+        </div>
+    {% else %}
+        <p><strong>Submitted:</strong> {{ ballot.submitted_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>Last Updated:</strong> {{ ballot.updated_at|date:"Y-m-d H:i" }}</p>
+        
+        <!-- Link to Edit (We will build the edit logic in Step 42) -->
+        <div style="margin-bottom: 20px;">
+            <a href="{% url 'edit_ballot' %}" style="padding: 8px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;">Edit Ballot</a>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #ccc; text-align: left;">
+                    <th style="padding: 10px; width: 80px;">Rank</th>
+                    <th style="padding: 10px;">Player</th>
+                    <th style="padding: 10px;">Your Comment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px; font-weight: bold; font-size: 1.2em;">#{{ entry.rank_position }}</td>
+                    <td style="padding: 10px;">
+                        <img src="{{ entry.player.avatar_url }}" alt="avatar" style="width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px;">
+                        <strong>{{ entry.player.username }}</strong> ({{ entry.player.current_pp }}pp)
+                    </td>
+                    <td style="padding: 10px; color: #555; font-style: italic;">
+                        {% if entry.comment_body %}
+                            "{{ entry.comment_body }}"
+                        {% else %}
+                            <span style="color: #aaa;">No comment</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

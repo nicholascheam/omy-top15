@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+    <h2>{% if is_edit %}Edit Your Ballot{% else %}Vote for your Top 15{% endif %} - {{ cycle.name }}</h2>
+    <p>Voting ends at: {{ cycle.end_time }}</p>
+
+    <div style="display: flex; gap: 20px; margin-top: 20px;">
+        <!-- LEFT COLUMN: SEARCH & AVAILABLE PLAYERS -->
+        <div style="flex: 1; border: 1px solid #ccc; padding: 15px; border-radius: 5px;">
+            <h3>Search Players</h3>
+            <input type="text" id="search-input" placeholder="Type at least 2 characters..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+            <div id="search-results" style="max-height: 400px; overflow-y: auto;">
+                <!-- Search results will appear here -->
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: YOUR TOP 15 -->
+        <div style="flex: 1; border: 2px solid #007bff; padding: 15px; border-radius: 5px; background-color: #f8f9fa;">
+            <h3>Your Top 15</h3>
+            <p style="font-size: 0.9em; color: #666;">Drag to reorder. Drag here to add.</p>
+            
+            <!-- The Sortable List -->
+            <div id="selected-players" style="min-height: 400px;">
+                <!-- Selected players will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" id="vote-form" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="entries" id="entries-input">
+        <input type="hidden" name="comments" id="comments-input">
+        
+        <button type="submit" id="submit-btn" style="padding: 10px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            {% if is_edit %}Update Ballot{% else %}Submit Ballot{% endif %}
+        </button>
+    </form>
+
+    <!-- Load SortableJS from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- Pass existing data if editing -->
+    {% if is_edit %}
+        {{ entries|json_script:"initial-entries" }}
+    {% endif %}
+    
+    <!-- Load our custom JS -->
+    <script src="{% static 'js/vote.js' %}"></script>
+{% endblock %}
