@@ -10,4 +10,7 @@ urlpatterns = [
     path("my-ballot", views.my_ballot, name="my_ballot"),
     path("my-ballot/edit", views.edit_ballot, name="edit_ballot"),
     path("api/players/search", views.search_players, name="search_players"),
+    path("my-ballot/comment", views.submit_comment, name="submit_comment"),
+    path("my-ballot/comment/<int:comment_id>/edit", views.edit_comment, name="edit_comment"),
+    path("my-ballot/comment/<int:comment_id>/delete", views.delete_comment, name="delete_comment"),
 ]

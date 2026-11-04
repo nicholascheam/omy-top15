@@ -10,6 +10,7 @@ from django.db import transaction
 from core.models import OsuUser, Ballot, Player, VotingCycle, BallotEntry, Comment
 from core.forms import BallotForm
 from core.decorators import osu_login_required
+from core.throttling import rate_limit
 from core.osu import (
     OSU_CLIENT_ID, 
     OSU_CLIENT_SECRET, 
@@ -166,8 +167,31 @@ def vote(request):
         # GET request: We pass 'is_edit' to the template
         is_edit = request.GET.get("edit") == "1" and existing_ballot is not None
         form = BallotForm(request=request, cycle=active_cycle)
+        
+        existing_entries = []
+        existing_comments = {}
+        
+        if is_edit:
+            # Fetch the current entries and comments
+            for entry in existing_ballot.entries.select_related("player").all():
+                existing_entries.append({
+                    "player_id": entry.player.id,
+                    "rank": entry.rank_position,
+                    "username": entry.player.username,
+                    "pp": entry.player.current_pp,
+                    "avatar_url": entry.player.avatar_url
+                })
+            
+            comments = Comment.objects.filter(user=request.osu_user, cycle=active_cycle)
+            existing_comments = {c.player_id: c.body for c in comments}
 
-    return render(request, "vote.html", {"form": form, "cycle": active_cycle, "is_edit": is_edit if request.method == "GET" else False})
+    return render(request, "vote.html", {
+        "form": form, 
+        "cycle": active_cycle, 
+        "is_edit": is_edit if request.method == "GET" else False,
+        "existing_entries": existing_entries if request.method == "GET" else [],
+        "existing_comments": existing_comments if request.method == "GET" else {}
+    })
 
 @osu_login_required
 def my_ballot(request):
@@ -233,3 +257,87 @@ def search_players(request):
     
     return JsonResponse({"results": results})
 
+@osu_login_required
+@rate_limit("comments", max_requests=10, window_seconds=3600)
+def submit_comment(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    player_id = request.POST.get("player_id")
+    body = request.POST.get("body", "").strip()
+
+    # 1. Validation
+    if not player_id:
+        return JsonResponse({"error": "Missing player_id"}, status=400)
+    
+    if len(body) > 500:
+        return JsonResponse({"error": "Comment exceeds 500 characters"}, status=400)
+
+    try:
+        player = Player.objects.get(id=player_id, is_active=True)
+    except Player.DoesNotExist:
+        return JsonResponse({"error": "Player not found or inactive"}, status=404)
+
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    if not active_cycle:
+        return JsonResponse({"error": "No active cycle"}, status=404)
+
+    # 2. Upsert the comment
+    comment, created = Comment.objects.update_or_create(
+        user=request.osu_user,
+        player=player,
+        cycle=active_cycle,
+        defaults={"body": body}
+    )
+
+    return JsonResponse({
+        "status": "success", 
+        "created": created,
+        "comment_id": comment.id,
+        "body": comment.body
+    })
+
+@osu_login_required
+@rate_limit("comments", max_requests=10, window_seconds=3600)
+def edit_comment(request, comment_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return JsonResponse({"error": "Comment not found"}, status=404)
+
+    # 1. Verify ownership
+    if comment.user != request.osu_user:
+        return JsonResponse({"error": "You do not own this comment"}, status=403)
+
+    # 2. Get and validate the new body
+    body = request.POST.get("body", "").strip()
+    if len(body) > 500:
+        return JsonResponse({"error": "Comment exceeds 500 characters"}, status=400)
+
+    # 3. Update and save
+    comment.body = body
+    comment.save()
+
+    return JsonResponse({"status": "success", "comment_id": comment.id, "body": comment.body})
+
+@osu_login_required
+def delete_comment(request, comment_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return JsonResponse({"error": "Comment not found"}, status=404)
+
+    # Verify ownership before deleting
+    if comment.user != request.osu_user:
+        return JsonResponse({"error": "You do not own this comment"}, status=403)
+
+    # Delete it
+    comment.delete()
+
+    return JsonResponse({"status": "success", "message": "Comment deleted"})

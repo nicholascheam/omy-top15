@@ -42,7 +42,8 @@
     
     <!-- Pass existing data if editing -->
     {% if is_edit %}
-        {{ entries|json_script:"initial-entries" }}
+        {{ existing_entries|json_script:"existing-entries" }}
+        {{ existing_comments|json_script:"existing-comments" }}
     {% endif %}
     
     <!-- Load our custom JS -->

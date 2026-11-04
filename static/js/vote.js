@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     div.id = `player-${player.id}`;
                     div.dataset.id = player.id;
                     div.dataset.username = player.username;
-                    div.style = "padding: 10px; border: 1px solid #ddd; margin-bottom: 5px; background: white; cursor: grab; display: flex; align-items: center;";
+                    div.style = "padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; background: white; cursor: grab; display: flex; align-items: center; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
                     div.innerHTML = `
                         <img src="${player.avatar_url}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px;">
                         <strong>${player.username}</strong> <span style="color: #666; margin-left: 5px;">(${Math.round(player.pp)}pp)</span>
@@ -102,9 +102,10 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-    // 3. Helper function to update visual ranks (1, 2, 3...)
+    // 3. Helper function to update visual ranks AND add comment boxes
     function updateRanks() {
         const items = selectedPlayers.querySelectorAll("[data-id]");
+        
         items.forEach((item, index) => {
             let rankBadge = item.querySelector(".rank-badge");
             if (!rankBadge) {
@@ -114,27 +115,150 @@ document.addEventListener("DOMContentLoaded", function() {
                 item.prepend(rankBadge);
             }
             rankBadge.innerText = `#${index + 1}`;
+
+            // --- NEW: Add Comment Textarea ---
+            if (!item.querySelector(".comment-wrapper")) {
+                // Change the layout so the textarea sits below the player info
+                item.style.flexDirection = "column";
+                item.style.alignItems = "flex-start";
+                item.style.userSelect = "none"; // Prevent text highlighting on fast drag
+                item.style.borderRadius = "8px";
+                item.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+
+                const infoDiv = document.createElement("div");
+                infoDiv.style.display = "flex";
+                infoDiv.style.alignItems = "center";
+                infoDiv.style.width = "100%";
+                // Move existing children (avatar, name) into infoDiv
+                while (item.firstChild) {
+                    infoDiv.appendChild(item.firstChild);
+                }
+                item.appendChild(infoDiv);
+
+                const commentWrapper = document.createElement("div");
+                commentWrapper.className = "comment-wrapper";
+                commentWrapper.style = "margin-top: 8px; width: 100%;";
+                commentWrapper.innerHTML = `
+                    <textarea class="comment-box" placeholder="Why did you vote for this player? (Optional)" style="width: 100%; font-size: 0.9em; resize: vertical; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; padding: 5px;" rows="2"></textarea>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 4px;">
+                        <span class="error-text" style="color: red; font-weight: bold; display: none;">Comment exceeds 500 characters!</span>
+                        <span class="char-counter" style="margin-left: auto; color: #666;">0/500</span>
+                    </div>
+                `;
+                item.appendChild(commentWrapper);
+
+                // Add event listener for the character counter
+                const textarea = commentWrapper.querySelector('.comment-box');
+                const counter = commentWrapper.querySelector('.char-counter');
+                const errorText = commentWrapper.querySelector('.error-text');
+                
+                textarea.addEventListener('input', function() {
+                    const length = this.value.length;
+                    counter.innerText = `${length}/500`;
+                    
+                    if (length > 500) {
+                        counter.style.color = 'red';
+                        counter.style.fontWeight = 'bold';
+                        errorText.style.display = 'inline'; // Show warning
+                    } else {
+                        counter.style.color = '#666';
+                        counter.style.fontWeight = 'normal';
+                        errorText.style.display = 'none'; // Hide warning
+                    }
+                    checkSubmitStatus();
+                });
+            }
         });
+        
+        checkSubmitStatus();
     }
 
-    // 4. Update hidden inputs on submit
+    // 4. Function to disable submit if any comment is > 500 chars
+    function checkSubmitStatus() {
+        let invalid = false;
+        document.querySelectorAll('.comment-box').forEach(box => {
+            if (box.value.length > 500) {
+                invalid = true;
+            }
+        });
+        document.getElementById("submit-btn").disabled = invalid;
+    }
+    // 5. Handle Edit Mode (Pre-fill existing ballot)
+    const existingEntriesElement = document.getElementById("existing-entries");
+    if (existingEntriesElement) {
+        const existingEntries = JSON.parse(existingEntriesElement.textContent);
+        const existingCommentsElement = document.getElementById("existing-comments");
+        const existingComments = existingCommentsElement ? JSON.parse(existingCommentsElement.textContent) : {};
+
+        // Sort by rank
+        existingEntries.sort((a, b) => a.rank - b.rank);
+
+        existingEntries.forEach(entry => {
+            // Create the player card (same structure as search results)
+            const div = document.createElement("div");
+            div.id = `player-${entry.player_id}`;
+            div.dataset.id = entry.player_id;
+            div.dataset.username = entry.username;
+            div.style = "padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; background: white; cursor: grab; display: flex; align-items: center; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+            div.innerHTML = `
+                <img src="${entry.avatar_url}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px;">
+                <strong>${entry.username}</strong> <span style="color: #666; margin-left: 5px;">(${Math.round(entry.pp)}pp)</span>
+            `;
+            selectedPlayers.appendChild(div);
+        });
+
+        // Trigger updateRanks to add the #1, #2 badges and the textareas
+        updateRanks();
+
+        // Now populate the comments into the newly created textareas
+        setTimeout(() => {
+            existingEntries.forEach(entry => {
+                if (existingComments[entry.player_id]) {
+                    const card = document.getElementById(`player-${entry.player_id}`);
+                    if (card) {
+                        const textarea = card.querySelector('.comment-box');
+                        if (textarea) {
+                            textarea.value = existingComments[entry.player_id];
+                            // Trigger the input event to update the character counter
+                            textarea.dispatchEvent(new Event('input'));
+                        }
+                    }
+                }
+            });
+        }, 100); // Small timeout to let the DOM settle
+    }
+    // 6. Update hidden inputs on submit
     form.addEventListener("submit", function(e) {
         const items = selectedPlayers.querySelectorAll("[data-id]");
         
         if (items.length !== 15) {
             e.preventDefault();
+            alert("You must select exactly 15 players before submitting.");
             return;
         }
 
         const entries = [];
+        const comments = {};
+
         items.forEach((item, index) => {
+            const player_id = parseInt(item.dataset.id);
+            
             entries.push({
-                player_id: parseInt(item.dataset.id),
+                player_id: player_id,
                 rank: index + 1
             });
+
+            const textarea = item.querySelector('.comment-box');
+            if (textarea && textarea.value.trim() !== "") {
+                comments[player_id] = textarea.value.trim();
+            }
         });
 
         entriesInput.value = JSON.stringify(entries);
-        document.getElementById("comments-input").value = JSON.stringify({});
+        document.getElementById("comments-input").value = JSON.stringify(comments);
+        
+        // Disable the submit button to prevent double-clicks
+        document.getElementById("submit-btn").disabled = true;
+        document.getElementById("submit-btn").innerText = "Submitting...";
     });
 });
