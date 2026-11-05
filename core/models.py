@@ -164,3 +164,11 @@ class BallotAudit(models.Model):
         actor_name = self.actor.username if self.actor else "System"
         return f"{self.action.upper()} on Ballot {self.ballot.id} by {actor_name}"
 
+class BannedUser(models.Model):
+    osu_user_id = models.BigIntegerField(unique=True)
+    banned_by = models.ForeignKey(OsuUser, on_delete=models.SET_NULL, null=True, blank=True)
+    banned_at = models.DateTimeField(auto_now_add=True)
+    reason = models.TextField(blank=True, default="")
+
+    def __str__(self):
+        return f"Banned osu_user_id: {self.osu_user_id}"

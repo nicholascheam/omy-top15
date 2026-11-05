@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 
 {% block content %}
+    {% if ballot.is_voided %}
+        <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+            <h3 style="margin-top: 0;">🛑 THIS BALLOT HAS BEEN VOIDED</h3>
+            <p><strong>Reason:</strong> {{ ballot.void_reason }}</p>
+            <p><strong>Voided By:</strong> {{ ballot.voided_by.username }} at {{ ballot.voided_at|date:"Y-m-d H:i" }}</p>
+            
+            <form method="POST" action="{% url 'review_unvoid' ballot.id %}" style="margin-top: 10px;">
+                {% csrf_token %}
+                <button type="submit" style="padding: 8px 15px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="return confirm('Are you sure you want to un-void this ballot?');">
+                    ♻️ Un-Void Ballot
+                </button>
+            </form>
+        </div>
+    {% endif %}
     <div style="margin-bottom: 20px;">
         <a href="{% url 'review_list' %}" style="text-decoration: none;">&larr; Back to Review Queue</a>
     </div>
@@ -47,4 +61,25 @@
             {% endfor %}
         </tbody>
     </table>
+        {% if not ballot.is_voided %}
+        <div style="margin-top: 40px; padding: 20px; border: 2px solid #dc3545; border-radius: 5px; background: #fff3f3;">
+            <h3 style="color: #dc3545; margin-top: 0;">Void this Ballot</h3>
+            <form method="POST" action="{% url 'review_void' ballot.id %}">
+                {% csrf_token %}
+                <label for="void_reason" style="display: block; margin-bottom: 5px;">Reason for voiding (optional, but good for records):</label>
+                <input type="text" name="void_reason" id="void_reason" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;" placeholder="e.g., Contains inactive player, obvious bot...">
+                
+                <!-- ADD THIS CHECKBOX -->
+                <div style="margin-bottom: 15px;">
+                    <label style="color: #dc3545; font-weight: bold; cursor: pointer;">
+                        <input type="checkbox" name="ban_user" value="1"> 🚫 Also ban this voter from future cycles
+                    </label>
+                </div>
+
+                <button type="submit" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;" onclick="return confirm('Are you sure you want to void this ballot?');">
+                    ❌ Void Ballot
+                </button>
+            </form>
+        </div>
+    {% endif %}
 {% endblock %}

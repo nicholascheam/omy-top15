@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from core.models import OsuUser, Ballot, Player, ShareLink, VotingCycle, BallotEntry, Comment
+from core.models import BallotAudit, BannedUser, OsuUser, Ballot, Player, ShareLink, VotingCycle, BallotEntry, Comment
 from core.forms import BallotForm
 from core.decorators import osu_login_required
 from core.throttling import rate_limit
@@ -108,6 +108,9 @@ def vote(request):
     if not active_cycle:
         return HttpResponse("There is no active voting cycle right now.", status=404)
 
+    if BannedUser.objects.filter(osu_user_id=request.osu_user.osu_user_id).exists():
+        return HttpResponseForbidden("You have been banned from participating in this voting cycle.")
+    
     if active_cycle.end_time <= timezone.now():
         if request.method == "POST":
             # If they try to submit data after the deadline, block it with a 403
@@ -139,15 +142,23 @@ def vote(request):
                 # Run the flags
                 flag_reason = check_ballot_flags(request, entries_data, comments_data, active_cycle)
 
-                # Create or get the ballot (now with the flag_reason)
+                # 1. Create or get the ballot
                 ballot, created = Ballot.objects.update_or_create(
                     user=request.osu_user, 
                     cycle=active_cycle, 
                     defaults={"flag_reason": flag_reason}
                 )
                 
+                # --- NEW: Capture old entries BEFORE deleting them ---
+                old_entries = []
+                if not created:
+                    old_entries = list(ballot.entries.values("player_id", "rank_position", "points"))
+                # ------------------------------------------------------
+
+                # 2. Delete old entries
                 ballot.entries.all().delete()
                 
+                # 3. Bulk create the new entries
                 new_entries = []
                 for entry in entries_data:
                     points = 16 - int(entry["rank"])
@@ -161,6 +172,7 @@ def vote(request):
                     )
                 BallotEntry.objects.bulk_create(new_entries)
 
+                # 4. Handle comments
                 for p_id_str, body in comments_data.items():
                     if body.strip():
                         Comment.objects.update_or_create(
@@ -169,6 +181,31 @@ def vote(request):
                             cycle=active_cycle,
                             defaults={"body": body}
                         )
+
+                # 5. AUDIT LOG
+                snapshot = {
+                    "entries": entries_data,
+                    "comments": comments_data
+                }
+                
+                if created:
+                    BallotAudit.objects.create(
+                        ballot=ballot,
+                        action="create",
+                        actor=request.osu_user,
+                        snapshot=snapshot
+                    )
+                else:
+                    # --- NEW: Audit on Edit ---
+                    BallotAudit.objects.create(
+                        ballot=ballot,
+                        action="edit",
+                        actor=request.osu_user,
+                        snapshot={
+                            "before": old_entries,
+                            "after": snapshot
+                        }
+                    )
 
             return redirect("/my-ballot?submitted=1")
     else:
@@ -457,3 +494,101 @@ def review_detail(request, ballot_id):
         "ballot": ballot,
         "entries": entries
     })
+
+@osu_login_required
+def review_void(request, ballot_id):
+    # Admin check
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    if request.method != "POST":
+        return HttpResponseForbidden("POST required")
+
+    try:
+        ballot = Ballot.objects.get(id=ballot_id)
+    except Ballot.DoesNotExist:
+        return HttpResponse("Ballot not found", status=404)
+
+    # Get the reason from the form, default to a generic message if left blank
+    reason = request.POST.get("void_reason", "").strip()
+    if not reason:
+        reason = "Voided by admin without specific reason."
+
+    # Update the ballot
+    ballot.is_voided = True
+    ballot.void_reason = reason
+    ballot.voided_by = request.osu_user
+    ballot.voided_at = timezone.now()
+    ballot.save()
+
+    BallotAudit.objects.create(
+        ballot=ballot,
+        action="void",
+        actor=request.osu_user,
+        snapshot={"reason": reason}
+    )
+    
+    if request.POST.get("ban_user") == "1":
+        BannedUser.objects.get_or_create(
+            osu_user_id=ballot.user.osu_user_id,
+            defaults={"banned_by": request.osu_user, "reason": reason}
+        )
+
+    return redirect("review_detail", ballot_id=ballot.id)
+
+@osu_login_required
+def review_unvoid(request, ballot_id):
+    # Admin check
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    if request.method != "POST":
+        return HttpResponseForbidden("POST required")
+
+    try:
+        ballot = Ballot.objects.get(id=ballot_id)
+    except Ballot.DoesNotExist:
+        return HttpResponse("Ballot not found", status=404)
+
+    # Revert the ballot to a clean state
+    ballot.is_voided = False
+    ballot.void_reason = ""
+    ballot.voided_by = None
+    ballot.voided_at = None
+    ballot.save()
+
+    BallotAudit.objects.create(
+        ballot=ballot,
+        action="unvoid",
+        actor=request.osu_user,
+        snapshot={}
+    )
+
+    return redirect("review_detail", ballot_id=ballot.id)
+
+@osu_login_required
+def review_bulk_void(request):
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    if request.method != "POST":
+        return HttpResponseForbidden("POST required")
+
+    # Get list of ballot IDs from the checkboxes
+    ballot_ids = request.POST.getlist("ballot_ids")
+    if ballot_ids:
+        # Update all selected ballots atomically
+        Ballot.objects.filter(id__in=ballot_ids).update(
+            is_voided=True,
+            void_reason="Bulk voided by admin.",
+            voided_by=request.osu_user,
+            voided_at=timezone.now()
+        )
+
+    return redirect("review_list")

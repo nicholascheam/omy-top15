@@ -3,7 +3,8 @@ from django.core.management import call_command
 from django.contrib import messages
 from .models import (
     OsuUser, VotingCycle, Player, Ballot, 
-    BallotEntry, Comment, ShareLink, BallotAudit
+    BallotEntry, Comment, ShareLink, BallotAudit,
+    BannedUser
 )
 
 # Register the simple models normally
@@ -14,6 +15,7 @@ admin.site.register(BallotEntry)
 admin.site.register(Comment)
 admin.site.register(ShareLink)
 admin.site.register(BallotAudit)
+admin.site.register(BannedUser)
 
 # Custom Admin for Player
 @admin.register(Player)

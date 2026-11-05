@@ -9,32 +9,51 @@
             🎉 <strong>Clean!</strong> There are no flagged ballots right now.
         </div>
     {% else %}
-        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #ccc; text-align: left;">
-                    <th style="padding: 10px;">Voter</th>
-                    <th style="padding: 10px;">Cycle</th>
-                    <th style="padding: 10px;">Flags</th>
-                    <th style="padding: 10px;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ballot in flagged_ballots %}
-                <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 10px;">
-                        <strong>{{ ballot.user.username }}</strong><br>
-                        <span style="font-size: 0.8em; color: #666;">Joined: {{ ballot.user.join_date|date:"Y-m-d" }}</span>
-                    </td>
-                    <td style="padding: 10px;">{{ ballot.cycle.name }}</td>
-                    <td style="padding: 10px; color: #dc3545; font-size: 0.9em;">
-                        {{ ballot.flag_reason }}
-                    </td>
-                    <td style="padding: 10px;">
-                        <a href="{% url 'review_detail' ballot.id %}" style="padding: 5px 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 3px;">Review</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <form method="POST" action="{% url 'review_bulk_void' %}">
+            {% csrf_token %}
+            <div style="margin: 15px 0;">
+                <button type="submit" style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="return confirm('Void all selected ballots?');">
+                    ❌ Void Selected
+                </button>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #ccc; text-align: left;">
+                        <th style="padding: 10px; width: 40px;"><input type="checkbox" id="select-all"></th>
+                        <th style="padding: 10px;">Voter</th>
+                        <th style="padding: 10px;">Cycle</th>
+                        <th style="padding: 10px;">Flags</th>
+                        <th style="padding: 10px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ballot in flagged_ballots %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px;"><input type="checkbox" name="ballot_ids" value="{{ ballot.id }}"></td>
+                        <td style="padding: 10px;">
+                            <strong>{{ ballot.user.username }}</strong><br>
+                            <span style="font-size: 0.8em; color: #666;">Joined: {{ ballot.user.join_date|date:"Y-m-d" }}</span>
+                        </td>
+                        <td style="padding: 10px;">{{ ballot.cycle.name }}</td>
+                        <td style="padding: 10px; color: #dc3545; font-size: 0.9em;">
+                            {{ ballot.flag_reason }}
+                        </td>
+                        <td style="padding: 10px;">
+                            <a href="{% url 'review_detail' ballot.id %}" style="padding: 5px 10px; background-color: #007bff; color: white; text-decoration: none; border-radius: 3px;">Review</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+
+        <!-- Small script for Select All checkbox -->
+        <script>
+            document.getElementById('select-all').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('input[name="ballot_ids"]');
+                checkboxes.forEach(cb => cb.checked = this.checked);
+            });
+        </script>
     {% endif %}
 {% endblock %}
