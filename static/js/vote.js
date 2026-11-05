@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     div.id = `player-${player.id}`;
                     div.dataset.id = player.id;
                     div.dataset.username = player.username;
-                    div.style = "padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; background: white; cursor: grab; display: flex; align-items: center; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+                    div.className = "player-card";
                     div.innerHTML = `
                         <img src="${player.avatar_url}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px;">
                         <strong>${player.username}</strong> <span style="color: #666; margin-left: 5px;">(${Math.round(player.pp)}pp)</span>
@@ -120,36 +120,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
             // --- NEW: Add Comment Textarea ---
             if (!item.querySelector(".comment-wrapper")) {
-                // Change the layout so the textarea sits below the player info
-                item.style.flexDirection = "column";
-                item.style.alignItems = "flex-start";
-                item.style.userSelect = "none"; // Prevent text highlighting on fast drag
-                item.style.borderRadius = "8px";
-                item.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
-
-                const infoDiv = document.createElement("div");
-                infoDiv.style.display = "flex";
-                infoDiv.style.alignItems = "center";
-                infoDiv.style.width = "100%";
-                // Move existing children (avatar, name) into infoDiv
-                while (item.firstChild) {
-                    infoDiv.appendChild(item.firstChild);
-                }
-                item.appendChild(infoDiv);
-
                 const commentWrapper = document.createElement("div");
                 commentWrapper.className = "comment-wrapper";
                 commentWrapper.style = "margin-top: 8px; width: 100%;";
                 commentWrapper.innerHTML = `
-                    <textarea class="comment-box" placeholder="Why did you vote for this player? (Optional)" style="width: 100%; font-size: 0.9em; resize: vertical; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; padding: 5px;" rows="2"></textarea>
+                    <textarea class="comment-box" placeholder="Why did you vote for this player? (Optional)" style="width: 100%; font-size: 0.9em; resize: vertical; box-sizing: border-box; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px;" rows="2"></textarea>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 4px;">
                         <span class="error-text" style="color: red; font-weight: bold; display: none;">Comment exceeds 500 characters!</span>
-                        <span class="char-counter" style="margin-left: auto; color: #666;">0/500</span>
+                        <span class="char-counter" style="margin-left: auto; color: #888;">0/500</span>
                     </div>
                 `;
                 item.appendChild(commentWrapper);
 
-                // Add event listener for the character counter
                 const textarea = commentWrapper.querySelector('.comment-box');
                 const counter = commentWrapper.querySelector('.char-counter');
                 const errorText = commentWrapper.querySelector('.error-text');
@@ -161,11 +143,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (length > 500) {
                         counter.style.color = 'red';
                         counter.style.fontWeight = 'bold';
-                        errorText.style.display = 'inline'; // Show warning
+                        errorText.style.display = 'inline';
                     } else {
-                        counter.style.color = '#666';
+                        counter.style.color = '#888';
                         counter.style.fontWeight = 'normal';
-                        errorText.style.display = 'none'; // Hide warning
+                        errorText.style.display = 'none';
                     }
                     checkSubmitStatus();
                 });
@@ -219,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function() {
             div.id = `player-${entry.player_id}`;
             div.dataset.id = entry.player_id;
             div.dataset.username = entry.username;
-            div.style = "padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 8px; background: white; cursor: grab; display: flex; align-items: center; user-select: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+            div.className = "player-card";
             div.innerHTML = `
                 <img src="${entry.avatar_url}" style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px;">
                 <strong>${entry.username}</strong> <span style="color: #666; margin-left: 5px;">(${Math.round(entry.pp)}pp)</span>

@@ -30,7 +30,19 @@ from core.osu import (
 logger = logging.getLogger("core")
 
 def home(request):
-    return render(request, "home.html")
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    has_ballot = False
+    is_logged_in = "osu_user_id" in request.session
+    
+    if active_cycle and is_logged_in:
+        user_id = request.session["osu_user_id"]
+        has_ballot = Ballot.objects.filter(user_id=user_id, cycle=active_cycle).exists()
+
+    return render(request, "home.html", {
+        "active_cycle": active_cycle,
+        "has_ballot": has_ballot,
+        "is_logged_in": is_logged_in
+    })
 
 def login_redirect(request):
     # Build the authorization URL

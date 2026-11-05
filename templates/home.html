@@ -1,12 +1,42 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
-    <h2>Welcome to the Voting Site!</h2>
-    <p>This is a temporary homepage stub. The real homepage is built in Step 91.</p>
-    
-    <!-- TEMPORARY LOGOUT TEST FORM -->
-    <form action="{% url 'logout' %}" method="POST" style="margin-top: 20px;">
-        {% csrf_token %}
-        <button type="submit">Log Out (Test)</button>
-    </form>
+    <div class="card" style="text-align: center;">
+        <h2>Welcome to the Malaysian osu! Top 15 Voting!</h2>
+        <p>Vote for your favorite Malaysian players to help them reach the Top 15!</p>
+
+        {% if active_cycle %}
+            <div style="background: var(--input-bg); padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3>Voting is Open: {{ active_cycle.name }}</h3>
+                <p>Deadline: <strong>{{ active_cycle.end_time }}</strong></p>
+                <div id="countdown" data-end-time="{{ active_cycle.end_time|date:'c' }}" style="font-size: 1.2em; font-weight: bold; color: #ff66aa; margin-top: 10px;">
+                </div>
+
+            {% if not is_logged_in %}
+                <a href="{% url 'login' %}" class="btn">Login with osu! to Vote</a>
+            {% elif has_ballot %}
+                <a href="{% url 'my_ballot' %}" class="btn" style="background-color: #28a745;">View Your Ballot</a>
+            {% else %}
+                <a href="{% url 'vote' %}" class="btn">Cast Your Vote Now</a>
+            {% endif %}
+        {% else %}
+            <p style="color: #dc3545; font-weight: bold;">There is no active voting cycle right now. Check back later!</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Rules & Guidelines</h3>
+        <ul class="rules-list">
+            <li>You must log in with your osu! account to vote.</li>
+            <li>Your account must be created before January 1, 2026.</li>
+            <li>Select exactly 15 players and rank them from 1 to 15.</li>
+            <li>You can optionally add a comment to each player (max 500 characters).</li>
+            <li>You can edit your ballot until the deadline.</li>
+        </ul>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/countdown.js' %}"></script>
 {% endblock %}

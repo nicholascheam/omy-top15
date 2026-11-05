@@ -1,0 +1,174 @@
+/* Modern Font & Reset */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+    --bg-color: #f4f6f8;
+    --text-color: #333;
+    --card-bg: #ffffff;
+    --header-bg: #2b2b2b;
+    --border-color: #ddd;
+    --input-bg: #ffffff;
+    --input-text: #333;
+}
+
+[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #f0f0f0;
+    --card-bg: #1e1e1e;
+    --header-bg: #000000;
+    --border-color: #444;
+    --input-bg: #2b2b2b;
+    --input-text: #f0f0f0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Layout Container */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+header {
+    background-color: var(--header-bg);
+    color: white;
+    padding: 15px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #ff66aa;
+}
+nav a {
+    color: white;
+    text-decoration: none;
+    margin-left: 15px;
+    font-weight: 600;
+}
+nav a:hover {
+    color: #ff66aa;
+}
+
+/* Cards */
+.card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    word-wrap: break-word; /* Fixes long comments stretching the page */
+    overflow-wrap: break-word;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #ff66aa;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn:hover { background-color: #e05599; }
+
+/* Rules List Fix */
+.rules-list {
+    text-align: left;
+    padding-left: 20px;
+    margin: 0;
+}
+.rules-list li {
+    margin-bottom: 8px;
+}
+
+/* Voting Page Layout */
+.vote-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+}
+.vote-column {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 5px;
+    background: var(--card-bg);
+}
+
+/* Player Cards (Replaces inline styles) */
+.player-card {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: var(--input-bg);
+    cursor: grab;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    color: var(--text-color);
+}
+.player-card strong { color: var(--text-color); }
+
+/* Form Inputs */
+input[type="text"], textarea, select {
+    background: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    header .container {
+        flex-direction: column;
+        text-align: center;
+    }
+    nav { margin-top: 10px; }
+    nav a { margin: 0 10px; }
+    
+    /* Stack the voting columns */
+    .vote-container {
+        flex-direction: column;
+    }
+    
+    /* Make tables scroll horizontally */
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+/* Fix for the Voting Columns */
+.vote-column {
+    background: var(--card-bg);
+}
+
+/* Ensure textareas are styled nicely */
+textarea.comment-box:focus {
+    outline: 2px solid #ff66aa;
+    border-color: #ff66aa;
+}
