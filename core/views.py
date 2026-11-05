@@ -107,6 +107,7 @@ def logout_view(request):
     return redirect("home")
 
 @osu_login_required
+@rate_limit("votes", max_requests=10, window_seconds=3600)
 def vote(request):
     active_cycle = VotingCycle.objects.filter(status="active").first()
     if not active_cycle:
