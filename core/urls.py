@@ -13,4 +13,7 @@ urlpatterns = [
     path("my-ballot/comment", views.submit_comment, name="submit_comment"),
     path("my-ballot/comment/<int:comment_id>/edit", views.edit_comment, name="edit_comment"),
     path("my-ballot/comment/<int:comment_id>/delete", views.delete_comment, name="delete_comment"),
+    path("my-ballot/share", views.create_share, name="create_share"),
+    path("s/<str:token>", views.public_share, name="public_share"),
+    path("my-ballot/share/revoke", views.revoke_share, name="revoke_share"),
 ]

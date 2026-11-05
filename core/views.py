@@ -1,13 +1,14 @@
 import logging
 import requests
 import urllib.parse
+import secrets
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 from django.db import transaction
-from core.models import OsuUser, Ballot, Player, VotingCycle, BallotEntry, Comment
+from core.models import OsuUser, Ballot, Player, ShareLink, VotingCycle, BallotEntry, Comment
 from core.forms import BallotForm
 from core.decorators import osu_login_required
 from core.throttling import rate_limit
@@ -176,6 +177,7 @@ def vote(request):
             for entry in existing_ballot.entries.select_related("player").all():
                 existing_entries.append({
                     "player_id": entry.player.id,
+                    "osu_user_id": entry.player.osu_user_id,
                     "rank": entry.rank_position,
                     "username": entry.player.username,
                     "pp": entry.player.current_pp,
@@ -218,10 +220,16 @@ def my_ballot(request):
     for entry in entries:
         entry.comment_body = comment_dict.get(entry.player_id, "")
 
+    # 7. Check for a Share Link
+    share_link = getattr(ballot, "sharelink", None)
+    has_active_link = share_link is not None and not share_link.revoked
+
     return render(request, "my_ballot.html", {
         "ballot": ballot, 
         "entries": entries, 
-        "cycle": active_cycle
+        "cycle": active_cycle,
+        "share_link": share_link,
+        "has_active_link": has_active_link
     })
 
 @osu_login_required
@@ -248,6 +256,7 @@ def search_players(request):
     results = [
         {
             "id": p.id,
+            "osu_user_id": p.osu_user_id,
             "username": p.username,
             "pp": p.current_pp,
             "avatar_url": p.avatar_url
@@ -341,3 +350,62 @@ def delete_comment(request, comment_id):
     comment.delete()
 
     return JsonResponse({"status": "success", "message": "Comment deleted"})
+
+@osu_login_required
+def create_share(request):
+    if request.method != "POST":
+        return HttpResponse("POST required", status=405)
+
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    if not active_cycle:
+        return HttpResponse("No active cycle", status=404)
+
+    ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
+    if not ballot:
+        return HttpResponse("No ballot found", status=404)
+
+    # Generate a secure random token (32 bytes = ~43 characters)
+    new_token = secrets.token_urlsafe(32)
+
+    # Upsert the share link (rotates the token if it already exists)
+    share, created = ShareLink.objects.update_or_create(
+        ballot=ballot,
+        defaults={"token": new_token, "revoked": False}
+    )
+
+    # Redirect back to the success banner if requested
+    if request.GET.get("next") == "submitted":
+        return redirect("/my-ballot?submitted=1")
+    
+    return redirect("my_ballot")
+
+def public_share(request, token):
+    # 1. Look up the ShareLink by token. If it doesn't exist or is revoked, 404.
+    try:
+        share_link = ShareLink.objects.get(token=token, revoked=False)
+    except ShareLink.DoesNotExist:
+        return HttpResponse("404 - Share link not found or revoked", status=404)
+
+    ballot = share_link.ballot
+    cycle = ballot.cycle
+    entries = ballot.entries.select_related("player").order_by("rank_position")
+
+    # Note: We intentionally do NOT pass comments or user identity here.
+    return render(request, "share_public.html", {
+        "ballot": ballot,
+        "entries": entries,
+        "cycle": cycle
+    })
+
+@osu_login_required
+def revoke_share(request):
+    if request.method != "POST":
+        return HttpResponse("POST required", status=405)
+
+    active_cycle = VotingCycle.objects.filter(status="active").first()
+    ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
+    
+    if ballot:
+        ShareLink.objects.filter(ballot=ballot).update(revoked=True)
+
+    return redirect("my_ballot")

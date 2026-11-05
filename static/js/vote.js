@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", function() {
             .then(data => {
                 searchResults.innerHTML = "";
                 data.results.forEach(player => {
+                    // Don't show yourself in the search results
+                    if (player.osu_user_id == CURRENT_OSU_ID) return;
                     // Don't show players already in the right column
                     if (document.getElementById(`player-${player.id}`)) return;
 
@@ -170,7 +172,23 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
         
-        checkSubmitStatus();
+        // Check for self-votes
+        let hasSelfVote = false;
+        items.forEach(item => {
+            if (item.dataset.osuId == CURRENT_OSU_ID) {
+                hasSelfVote = true;
+            }
+        });
+
+        const errDiv = document.getElementById("form-errors");
+        if (hasSelfVote) {
+            errDiv.innerText = "You cannot vote for yourself! Please remove yourself from the list.";
+            errDiv.style.display = "block";
+            document.getElementById("submit-btn").disabled = true;
+        } else {
+            errDiv.style.display = "none";
+            checkSubmitStatus(); // Re-enable button if comment length is valid
+        }
     }
 
     // 4. Function to disable submit if any comment is > 500 chars
@@ -186,6 +204,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // 5. Handle Edit Mode (Pre-fill existing ballot)
     const existingEntriesElement = document.getElementById("existing-entries");
     if (existingEntriesElement) {
+        // Clear any existing players in the right column to prevent duplicates
+        selectedPlayers.innerHTML = ""; 
         const existingEntries = JSON.parse(existingEntriesElement.textContent);
         const existingCommentsElement = document.getElementById("existing-comments");
         const existingComments = existingCommentsElement ? JSON.parse(existingCommentsElement.textContent) : {};
@@ -234,6 +254,19 @@ document.addEventListener("DOMContentLoaded", function() {
         if (items.length !== 15) {
             e.preventDefault();
             alert("You must select exactly 15 players before submitting.");
+            return;
+        }
+
+        let selfVote = false;
+        items.forEach(item => {
+            if (item.dataset.osuId == CURRENT_OSU_ID) selfVote = true;
+        });
+
+        if (selfVote) {
+            e.preventDefault();
+            const errDiv = document.getElementById("form-errors");
+            errDiv.innerText = "You cannot vote for yourself!";
+            errDiv.style.display = "block";
             return;
         }
 

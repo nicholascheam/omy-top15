@@ -1,10 +1,34 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <script>
+        function copyShareLink(token) {
+            const url = window.location.origin + '/s/' + token;
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Public link copied to clipboard!');
+            });
+        }
+    </script>
 
+    <!-- SUCCESS BANNER -->
     {% if request.GET.submitted == '1' %}
-        <div style="background-color: #d4edda; color: #155724; padding: 15px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 5px;">
-            <strong>Success!</strong> Your ballot has been saved.
+        <div style="background-color: #d4edda; color: #155724; padding: 20px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 5px; text-align: center;">
+            <h3 style="margin-top: 0;">🎉 Success! Your ballot has been saved.</h3>
+            
+            {% if has_active_link %}
+                <p>Share your Top 15 with your friends on Discord!</p>
+                <button type="button" onclick="copyShareLink('{{ share_link.token }}')" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                    📋 Copy Public Link
+                </button>
+            {% else %}
+                <p>Want to share your Top 15 with your friends?</p>
+                <form method="POST" action="{% url 'create_share' %}?next=submitted" style="margin-top: 10px;">
+                    {% csrf_token %}
+                    <button type="submit" style="padding: 10px 20px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                        🔗 Generate Public Link
+                    </button>
+                </form>
+            {% endif %}
         </div>
     {% endif %}
 
@@ -20,9 +44,29 @@
         <p><strong>Submitted:</strong> {{ ballot.submitted_at|date:"Y-m-d H:i" }}</p>
         <p><strong>Last Updated:</strong> {{ ballot.updated_at|date:"Y-m-d H:i" }}</p>
         
-        <!-- Link to Edit (We will build the edit logic in Step 42) -->
-        <div style="margin-bottom: 20px;">
+        <!-- Edit & Share Buttons -->
+        <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <a href="{% url 'edit_ballot' %}" style="padding: 8px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;">Edit Ballot</a>
+
+            <!-- If an active link exists, show Copy, View, and Revoke -->
+            {% if has_active_link %}
+                <button type="button" onclick="copyShareLink('{{ share_link.token }}')" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">📋 Copy Link</button>
+                
+                <a href="/s/{{ share_link.token }}" target="_blank" style="padding: 8px 15px; background-color: #f8f9fa; color: #333; border: 1px solid #ccc; text-decoration: none; border-radius: 5px;">↗ View Public Ballot</a>
+
+                <form method="POST" action="{% url 'revoke_share' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">🛑 Revoke Link</button>
+                </form>
+            {% endif %}
+
+            <!-- Always show Generate/Rotate button -->
+            <form method="POST" action="{% url 'create_share' %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" style="padding: 8px 15px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    {% if has_active_link %}🔄 Generate New Link{% else %}🔗 Generate Share Link{% endif %}
+                </button>
+            </form>
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
