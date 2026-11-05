@@ -2,6 +2,7 @@ import logging
 import requests
 import urllib.parse
 import secrets
+import os
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
@@ -12,6 +13,7 @@ from core.models import OsuUser, Ballot, Player, ShareLink, VotingCycle, BallotE
 from core.forms import BallotForm
 from core.decorators import osu_login_required
 from core.throttling import rate_limit
+from core.flags import check_ballot_flags
 from core.osu import (
     OSU_CLIENT_ID, 
     OSU_CLIENT_SECRET, 
@@ -89,6 +91,7 @@ def oauth_callback(request):
 
     # 9. Store the user's database ID in the session
     request.session["osu_user_id"] = user.id
+    request.session["login_time"] = timezone.now().timestamp()
     
     # 10. Redirect to the homepage
     return redirect("home")
@@ -133,10 +136,14 @@ def vote(request):
                 return HttpResponseForbidden("You cannot vote for yourself.")
 
             with transaction.atomic():
+                # Run the flags
+                flag_reason = check_ballot_flags(request, entries_data, comments_data, active_cycle)
+
+                # Create or get the ballot (now with the flag_reason)
                 ballot, created = Ballot.objects.update_or_create(
                     user=request.osu_user, 
                     cycle=active_cycle, 
-                    defaults={}
+                    defaults={"flag_reason": flag_reason}
                 )
                 
                 ballot.entries.all().delete()
@@ -409,3 +416,44 @@ def revoke_share(request):
         ShareLink.objects.filter(ballot=ballot).update(revoked=True)
 
     return redirect("my_ballot")
+
+@osu_login_required
+def review_list(request):
+    # Check if the user is an admin
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    # Get all ballots that have a non-empty flag_reason
+    flagged_ballots = Ballot.objects.exclude(flag_reason="").order_by("-submitted_at")
+
+    return render(request, "admin_review_list.html", {"flagged_ballots": flagged_ballots})
+
+@osu_login_required
+def review_detail(request, ballot_id):
+    # Admin check
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    # Fetch the ballot
+    try:
+        ballot = Ballot.objects.get(id=ballot_id)
+    except Ballot.DoesNotExist:
+        return HttpResponse("Ballot not found", status=404)
+
+    # Fetch entries and comments
+    entries = ballot.entries.select_related("player").order_by("rank_position")
+    comments = Comment.objects.filter(user=ballot.user, cycle=ballot.cycle)
+    comment_dict = {c.player_id: c.body for c in comments}
+
+    for entry in entries:
+        entry.comment_body = comment_dict.get(entry.player_id, "")
+
+    return render(request, "admin_review_detail.html", {
+        "ballot": ballot,
+        "entries": entries
+    })

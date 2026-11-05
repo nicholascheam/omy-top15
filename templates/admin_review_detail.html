@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'review_list' %}" style="text-decoration: none;">&larr; Back to Review Queue</a>
+    </div>
+
+    <h2>Reviewing Ballot for: {{ ballot.user.username }}</h2>
+    
+    <div style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px;">
+        <p style="margin: 0;"><strong>Voter Join Date:</strong> {{ ballot.user.join_date|date:"Y-m-d H:i" }}</p>
+        <p style="margin: 0;"><strong>Country:</strong> {{ ballot.user.country_code }}</p>
+        <p style="margin: 5px 0 0 0; color: #dc3545;"><strong>Flag Reason:</strong> {{ ballot.flag_reason }}</p>
+    </div>
+
+    <h3>Ballot Entries</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+            <tr style="border-bottom: 2px solid #ccc; text-align: left;">
+                <th style="padding: 10px;">Rank</th>
+                <th style="padding: 10px;">Player</th>
+                <th style="padding: 10px;">PP</th>
+                <th style="padding: 10px;">Active?</th>
+                <th style="padding: 10px;">Comment</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px; font-weight: bold;">#{{ entry.rank_position }}</td>
+                <td style="padding: 10px;">
+                    <img src="{{ entry.player.avatar_url }}" style="width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 5px;">
+                    {{ entry.player.username }}
+                </td>
+                <td style="padding: 10px;">{{ entry.player.current_pp }}pp</td>
+                <td style="padding: 10px;">
+                    {% if entry.player.is_active %}
+                        <span style="color: green;">Yes</span>
+                    {% else %}
+                        <span style="color: red; font-weight: bold;">No</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 10px; color: #555; font-style: italic;">
+                    {{ entry.comment_body|default:"<span style='color: #aaa;'>No comment</span>"|safe }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
