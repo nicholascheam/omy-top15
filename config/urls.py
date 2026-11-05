@@ -9,6 +9,7 @@ urlpatterns = [
     path("admin/review/<int:ballot_id>/void", core_views.review_void, name="review_void"),
     path("admin/review/<int:ballot_id>/unvoid", core_views.review_unvoid, name="review_unvoid"),
     path("admin/review/bulk-void", core_views.review_bulk_void, name="review_bulk_void"),
+    path("admin/export", core_views.export_results, name="export_results"),
 
     # Default Django Admin
     path("admin/", admin.site.urls),

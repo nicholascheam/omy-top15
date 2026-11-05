@@ -3,17 +3,21 @@ import requests
 import urllib.parse
 import secrets
 import os
+import io
+import zipfile
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 from django.db import transaction
+from core.export import reflag_below_threshold, refresh_final_pp
 from core.models import BallotAudit, BannedUser, OsuUser, Ballot, Player, ShareLink, VotingCycle, BallotEntry, Comment
 from core.forms import BallotForm
 from core.decorators import osu_login_required
 from core.throttling import rate_limit
 from core.flags import check_ballot_flags
+from core.export import refresh_final_pp, reflag_below_threshold, generate_export_zip
 from core.osu import (
     OSU_CLIENT_ID, 
     OSU_CLIENT_SECRET, 
@@ -465,8 +469,14 @@ def review_list(request):
 
     # Get all ballots that have a non-empty flag_reason
     flagged_ballots = Ballot.objects.exclude(flag_reason="").order_by("-submitted_at")
+    
+    # Fetch all cycles, newest first
+    all_cycles = VotingCycle.objects.all().order_by('-start_time')
 
-    return render(request, "admin_review_list.html", {"flagged_ballots": flagged_ballots})
+    return render(request, "admin_review_list.html", {
+        "flagged_ballots": flagged_ballots,
+        "all_cycles": all_cycles
+    })
 
 @osu_login_required
 def review_detail(request, ballot_id):
@@ -592,3 +602,35 @@ def review_bulk_void(request):
         )
 
     return redirect("review_list")
+
+@osu_login_required
+def export_results(request):
+    if request.method != "POST":
+        return HttpResponse("POST required", status=405)
+
+    admin_ids_str = os.environ.get("ADMIN_OSU_IDS", "")
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    if request.osu_user.osu_user_id not in admin_ids:
+        return HttpResponseForbidden("403 Forbidden: You are not an admin.")
+
+    cycle_id = request.POST.get("cycle_id")
+    cycle = VotingCycle.objects.filter(id=cycle_id).first()
+    
+    if not cycle:
+        return HttpResponse("Cycle not found.", status=404)
+        
+    # Enforce the rule
+    if cycle.status != "closed":
+        return HttpResponse("You must mark this cycle as 'closed' before exporting.", status=400)
+    
+    # 1. Refresh PP and Re-flag
+    refresh_final_pp(cycle)
+    reflag_below_threshold(cycle)
+    
+    # 2. Generate Zip
+    zip_data = generate_export_zip(cycle)
+
+    # 3. Return as download
+    response = HttpResponse(zip_data, content_type="application/zip")
+    response["Content-Disposition"] = f'attachment; filename="{cycle.name}_export.zip"'
+    return response

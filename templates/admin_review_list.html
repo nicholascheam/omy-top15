@@ -4,6 +4,28 @@
     <h2>Admin Review Queue</h2>
     <p>Ballots that have been flagged by the system for manual review.</p>
 
+    <!-- EXPORT FORM GOES HERE -->
+    <div style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="margin: 0;">Cycle Export</h3>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">Select a closed cycle to download its results.</p>
+        </div>
+        <form method="POST" action="{% url 'export_results' %}" style="display: flex; gap: 10px; align-items: center;">
+            {% csrf_token %}
+            
+            <!-- NEW DROPDOWN -->
+            <select name="cycle_id" style="padding: 10px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px;">
+                {% for c in all_cycles %}
+                    <option value="{{ c.id }}">{{ c.name }} ({{ c.status|upper }})</option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                📥 Download Export Zip
+            </button>
+        </form>
+    </div>>
+
     {% if not flagged_ballots %}
         <div style="background-color: #d4edda; color: #155724; padding: 20px; border-radius: 5px; margin-top: 20px;">
             🎉 <strong>Clean!</strong> There are no flagged ballots right now.

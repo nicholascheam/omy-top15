@@ -52,3 +52,18 @@ def fetch_rankings(country="MY", page=1):
     
     # We only want the 'ranking' array from the response
     return response.json().get("ranking", [])
+
+def fetch_user_pp(osu_user_id):
+    """Fetches the current pp for a specific user from the osu! API."""
+    token = _get_app_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+    }
+    url = f"https://osu.ppy.sh/api/v2/users/{osu_user_id}/osu"
+    
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("statistics", {}).get("pp", 0.0)
+    return None
