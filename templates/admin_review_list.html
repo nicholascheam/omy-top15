@@ -5,7 +5,7 @@
     <p>Ballots that have been flagged by the system for manual review.</p>
 
     <!-- EXPORT FORM GOES HERE -->
-    <div style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+    <div style="background: var(--input-bg); padding: 15px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
         <div>
             <h3 style="margin: 0;">Cycle Export</h3>
             <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #666;">Select a closed cycle to download its results.</p>
@@ -24,7 +24,7 @@
                 📥 Download Export Zip
             </button>
         </form>
-    </div>>
+    </div>
 
     {% if not flagged_ballots %}
         <div style="background-color: #d4edda; color: #155724; padding: 20px; border-radius: 5px; margin-top: 20px;">
