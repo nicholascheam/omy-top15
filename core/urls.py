@@ -16,4 +16,5 @@ urlpatterns = [
     path("my-ballot/share", views.create_share, name="create_share"),
     path("s/<str:token>", views.public_share, name="public_share"),
     path("my-ballot/share/revoke", views.revoke_share, name="revoke_share"),
+    path("about", views.about, name="about"),
 ]

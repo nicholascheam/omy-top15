@@ -2,54 +2,56 @@
 {% load static %}
 
 {% block content %}
-    <h2>{% if is_edit %}Edit Your Ballot{% else %}Vote for your Top 15{% endif %} - {{ cycle.name }}</h2>
-    <p>Voting ends at: {{ cycle.end_time }}</p>
+    <!-- NEW: Pass the user's ID to JavaScript -->
+    <script>
+        const CURRENT_OSU_ID = "{{ request.osu_user.osu_user_id }}";
+    </script>
 
-    <div class="vote-container">
-        <!-- LEFT COLUMN: SEARCH & AVAILABLE PLAYERS -->
-        <div class="vote-column">
-            <h3>Search Players</h3>
-            <input type="text" id="search-input" placeholder="Type at least 2 characters..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
-            <div id="search-results" style="max-height: 400px; overflow-y: auto;">
-                <!-- Search results will appear here -->
+    <div class="container-wide">
+        <h2>{% if is_edit %}Edit Your Ballot{% else %}Vote for your Top 15{% endif %} - {{ cycle.name }}</h2>
+        <p>Voting ends at: {{ cycle.end_time }}</p>
+
+        <div class="vote-container">
+            <!-- LEFT COLUMN -->
+            <div class="vote-column">
+                <h3>Search Players</h3>
+                <input type="text" id="search-input" placeholder="Type at least 2 characters..." style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                <div id="search-results" class="scroll-area">
+                    <!-- Search results load here -->
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="vote-column" style="border: 2px solid #ff66aa;">
+                <h3>Your Top 15</h3>
+                <p style="font-size: 0.9em; color: var(--text-color); opacity: 0.7;">Drag to reorder. Drag back to left to remove.</p>
+                <div id="selected-players" class="scroll-area">
+                    <!-- Selected players load here -->
+                </div>
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: YOUR TOP 15 -->
-        <div class="vote-column" style="border: 2px solid #007bff;">
-            <h3>Your Top 15</h3>
-            <p style="font-size: 0.9em; color: #666;">Drag to reorder. Drag here to add.</p>
+        <!-- Form with Sticky Button -->
+        <form method="POST" id="vote-form">
+            {% csrf_token %}
+            <input type="hidden" name="entries" id="entries-input">
+            <input type="hidden" name="comments" id="comments-input">
             
-            <!-- The Sortable List -->
-            <div id="selected-players" style="min-height: 400px;">
-                <!-- Selected players will appear here -->
+            <div class="sticky-submit">
+                <div id="form-errors" style="color: red; font-weight: bold; margin-bottom: 10px; display: none;"></div>
+                <button type="submit" id="submit-btn" class="btn" style="background-color: #28a745; font-size: 16px;">
+                    {% if is_edit %}Update Ballot{% else %}Submit Ballot{% endif %}
+                </button>
             </div>
-        </div>
+        </form>
     </div>
 
-    <form method="POST" id="vote-form" style="margin-top: 20px;">
-        {% csrf_token %}
-        <input type="hidden" name="entries" id="entries-input">
-        <input type="hidden" name="comments" id="comments-input">
-        <div id="form-errors" style="color: red; font-weight: bold; margin-bottom: 10px; display: none;"></div>
-            <script>
-                const CURRENT_OSU_ID = "{{ request.osu_user.osu_user_id }}";
-            </script>
-            <script src="{% static 'js/vote.js' %}"></script>
-        <button type="submit" id="submit-btn" style="padding: 10px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            {% if is_edit %}Update Ballot{% else %}Submit Ballot{% endif %}
-        </button>
-    </form>
-
-    <!-- Load SortableJS from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     
-    <!-- Pass existing data if editing -->
     {% if is_edit %}
         {{ existing_entries|json_script:"existing-entries" }}
         {{ existing_comments|json_script:"existing-comments" }}
     {% endif %}
     
-    <!-- Load our custom JS -->
     <script src="{% static 'js/vote.js' %}"></script>
 {% endblock %}

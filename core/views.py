@@ -647,3 +647,6 @@ def export_results(request):
     response = HttpResponse(zip_data, content_type="application/zip")
     response["Content-Disposition"] = f'attachment; filename="{cycle.name}_export.zip"'
     return response
+
+def about(request):
+    return render(request, "about.html")

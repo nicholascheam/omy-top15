@@ -30,6 +30,16 @@ document.addEventListener("DOMContentLoaded", function() {
                         <strong>${player.username}</strong> <span style="color: #666; margin-left: 5px;">(${Math.round(player.pp)}pp)</span>
                     `;
                     searchResults.appendChild(div);
+                    // Tap to add (for mobile)
+                    div.addEventListener('click', function() {
+                        if (selectedPlayers.children.length >= 15) {
+                            alert("You can only select 15 players!");
+                            return;
+                        }
+                        selectedPlayers.appendChild(this);
+                        updateRanks();
+                        fetchPlayers(searchInput.value); // Refresh search list
+                    });
                 });
             });
     }
@@ -113,18 +123,38 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!rankBadge) {
                 rankBadge = document.createElement("span");
                 rankBadge.className = "rank-badge";
-                rankBadge.style = "font-weight: bold; font-size: 1.2em; margin-right: 10px; color: #007bff; width: 30px; display: inline-block;";
+                rankBadge.style = "font-weight: bold; font-size: 1.2em; margin-right: 10px; color: #ff66aa; width: 30px; display: inline-block;";
                 item.prepend(rankBadge);
             }
             rankBadge.innerText = `#${index + 1}`;
 
-            // --- NEW: Add Comment Textarea ---
+            // --- Add Comment Textarea and Info Div ---
             if (!item.querySelector(".comment-wrapper")) {
+                // 1. Create a clickable div for the avatar/name
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "info-div";
+                infoDiv.style = "display: flex; align-items: center; width: 100%; cursor: pointer;";
+                infoDiv.title = "Tap to remove";
+
+                // 2. Move existing children (rank badge, avatar, name) into infoDiv
+                while (item.firstChild) {
+                    infoDiv.appendChild(item.firstChild);
+                }
+                item.appendChild(infoDiv);
+
+                // 3. Mobile: Tap the name/avatar to remove the player
+                infoDiv.addEventListener('click', function() {
+                    item.remove();
+                    updateRanks();
+                    fetchPlayers(searchInput.value); // Refresh left list
+                });
+
+                // 4. Create the text area
                 const commentWrapper = document.createElement("div");
                 commentWrapper.className = "comment-wrapper";
                 commentWrapper.style = "margin-top: 8px; width: 100%;";
                 commentWrapper.innerHTML = `
-                    <textarea class="comment-box" placeholder="Why did you vote for this player? (Optional)" style="width: 100%; font-size: 0.9em; resize: vertical; box-sizing: border-box; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px;" rows="2"></textarea>
+                    <textarea class="comment-box" placeholder="Why did you vote for this player? (Optional)" style="width: 100%; font-size: 0.9em; resize: vertical; box-sizing: border-box; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px;" rows="1"></textarea>
                     <div style="display: flex; justify-content: space-between; font-size: 0.8em; margin-top: 4px;">
                         <span class="error-text" style="color: red; font-weight: bold; display: none;">Comment exceeds 500 characters!</span>
                         <span class="char-counter" style="margin-left: auto; color: #888;">0/500</span>
@@ -169,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("submit-btn").disabled = true;
         } else {
             errDiv.style.display = "none";
-            checkSubmitStatus(); // Re-enable button if comment length is valid
+            checkSubmitStatus(); 
         }
     }
 

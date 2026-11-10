@@ -172,3 +172,86 @@ textarea.comment-box:focus {
     outline: 2px solid #ff66aa;
     border-color: #ff66aa;
 }
+
+/* --- WIDER CONTAINER FOR DESKTOP --- */
+.container-wide {
+    max-width: 1400px; /* Uses way more screen space */
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* --- VOTING PAGE LAYOUT --- */
+.vote-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    align-items: stretch; 
+    height: 70vh; /* Takes up 70% of screen height */
+    min-height: 600px;
+}
+
+.vote-column {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* THIS IS THE MAGIC FIX FOR SCROLLING */
+}
+
+.scroll-area {
+    flex-grow: 1;
+    overflow-y: auto; /* Makes ONLY this part scroll */
+    padding-right: 10px; /* Room for scrollbar */
+}
+
+/* Sticky Submit Button */
+.sticky-submit {
+    position: sticky;
+    bottom: 20px;
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+    margin-top: 20px;
+    text-align: center;
+    z-index: 10;
+    border: 1px solid var(--border-color);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    /* General Mobile */
+    header .container { flex-direction: column; text-align: center; }
+    nav { margin-top: 10px; }
+    nav a { margin: 0 10px; }
+    
+    /* Stack the voting columns */
+    .vote-container {
+        flex-direction: column;
+        height: auto;
+        min-height: auto;
+    }
+    
+    /* Give each box a fixed scrollable height */
+    .vote-column {
+        flex: none;
+        height: 400px; /* Each box is 400px tall on mobile */
+        margin-bottom: 20px;
+    }
+
+    /* Make the sticky submit button cover the full width on mobile */
+    .sticky-submit {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Add padding to the bottom of the page so the sticky button doesn't hide content */
+    body { padding-bottom: 80px; }
+}
