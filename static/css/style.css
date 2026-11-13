@@ -33,7 +33,8 @@ body {
 
 /* Layout Container */
 .container {
-    max-width: 900px;
+    max-width: 1000px;
+    width: 90%;
     margin: 0 auto;
     padding: 20px;
 }
@@ -55,6 +56,11 @@ header h1 {
     font-size: 1.5rem;
     color: #ff66aa;
 }
+
+html {
+    background-color: var(--bg-color);
+}
+
 nav a {
     color: white;
     text-decoration: none;
@@ -74,6 +80,12 @@ nav a:hover {
     margin-bottom: 20px;
     word-wrap: break-word; /* Fixes long comments stretching the page */
     overflow-wrap: break-word;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
 /* Buttons */
@@ -106,31 +118,55 @@ nav a:hover {
     display: flex;
     gap: 20px;
     margin-top: 20px;
+    align-items: stretch; 
+    height: calc(100vh - 250px); /* Dynamically fills the screen height */
+    min-height: 600px;
+    width: 100%;
 }
+
 .vote-column {
     flex: 1;
     border: 1px solid var(--border-color);
     padding: 15px;
-    border-radius: 5px;
+    border-radius: 8px;
     background: var(--card-bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 0; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 /* Player Cards (Replaces inline styles) */
 .player-card {
+    display: flex;
+    flex-direction: column; /* Forces vertical stacking */
     padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
     margin-bottom: 8px;
     background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     cursor: grab;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    user-select: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    color: var(--text-color);
+    transition: transform 0.1s, box-shadow 0.1s;
 }
+
+.player-card:active {
+    cursor: grabbing;
+}
+
+.player-card textarea.comment-box {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
+}
+
 .player-card strong { color: var(--text-color); }
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #ff66aa !important;
+    border: 2px dashed #fff;
+    transform: scale(0.98);
+}
 
 /* Form Inputs */
 input[type="text"], textarea, select {
@@ -142,23 +178,59 @@ input[type="text"], textarea, select {
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
+    /* Header & Nav */
     header .container {
         flex-direction: column;
         text-align: center;
     }
     nav { margin-top: 10px; }
     nav a { margin: 0 10px; }
-    
-    /* Stack the voting columns */
+
+    /* Stack the homepage grid into 1 column */
+    .home-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Voting Page Columns */
     .vote-container {
         flex-direction: column;
+        height: auto; /* Let it flow naturally on mobile */
     }
-    
+    .vote-column {
+        height: 50vh; /* Each box takes up half the screen */
+        min-height: 350px;
+        margin-bottom: 10px;
+    }
+
+    /* Add empty space at the bottom of the lists so users can easily swipe/scroll */
+    .scroll-area {
+        padding-bottom: 80px; 
+    }
+
     /* Make tables scroll horizontally */
     table {
         display: block;
         overflow-x: auto;
         white-space: nowrap;
+    }
+
+    /* Sticky Submit Button - ensure it covers the full width and doesn't hide content */
+    .sticky-submit {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+        background: var(--card-bg);
+        z-index: 1000;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    /* Add padding to the bottom of the body so the sticky button doesn't cover the last player */
+    body { 
+        padding-bottom: 90px; 
     }
 }
 
@@ -175,7 +247,8 @@ textarea.comment-box:focus {
 
 /* --- WIDER CONTAINER FOR DESKTOP --- */
 .container-wide {
-    max-width: 1400px; /* Uses way more screen space */
+    max-width: 1600px; /* Uses way more screen space */
+    width: 95%;
     margin: 0 auto;
     padding: 20px;
 }
@@ -183,11 +256,11 @@ textarea.comment-box:focus {
 /* --- VOTING PAGE LAYOUT --- */
 .vote-container {
     display: flex;
-    gap: 20px;
-    margin-top: 20px;
+    gap: 15px;
+    margin-top: 15px;
     align-items: stretch; 
-    height: 70vh; /* Takes up 70% of screen height */
-    min-height: 600px;
+    height: calc(100vh - 200px); /* Takes up 70% of screen height */
+    min-height: 500px;
 }
 
 .vote-column {
@@ -198,13 +271,14 @@ textarea.comment-box:focus {
     background: var(--card-bg);
     display: flex;
     flex-direction: column;
-    min-height: 0; /* THIS IS THE MAGIC FIX FOR SCROLLING */
+    min-height: 0; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 .scroll-area {
     flex-grow: 1;
     overflow-y: auto; /* Makes ONLY this part scroll */
-    padding-right: 10px; /* Room for scrollbar */
+    padding-right: 5px; /* Room for scrollbar */
 }
 
 /* Sticky Submit Button */
@@ -219,6 +293,17 @@ textarea.comment-box:focus {
     text-align: center;
     z-index: 10;
     border: 1px solid var(--border-color);
+}
+
+#search-input {
+    width: 100%;
+    box-sizing: border-box; /* Fixes clipping */
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-color);
+    margin-bottom: 15px;
 }
 
 /* Mobile Adjustments */

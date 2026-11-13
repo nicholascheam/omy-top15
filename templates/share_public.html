@@ -6,6 +6,7 @@
     <!-- Add og:image here later if you have a site logo -->
 {% endblock %}
 {% block content %}
+    <div class="container">
     <div style="text-align: center; margin-bottom: 30px;">
         <h2>{{ ballot.user.username }}'s Top 15</h2>
         <p style="color: #666;">Voting Cycle: {{ cycle.name }}</p>
@@ -22,5 +23,6 @@
                 </div>
             </div>
         {% endfor %}
+    </div>
     </div>
 {% endblock %}

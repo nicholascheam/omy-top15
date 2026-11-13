@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <div class="container-wide">
     {% if ballot.is_voided %}
         <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
             <h3 style="margin-top: 0;">🛑 THIS BALLOT HAS BEEN VOIDED</h3>
@@ -82,4 +83,5 @@
             </form>
         </div>
     {% endif %}
+    </div>
 {% endblock %}

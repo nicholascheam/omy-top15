@@ -40,7 +40,8 @@ class Command(BaseCommand):
                         "username": user_data["username"],
                         "avatar_url": user_data["avatar_url"],
                         "country_code": user_data["country_code"],
-                        "current_pp": int(pp), 
+                        "current_pp": int(pp),
+ 			"country_rank": entry.get("country_rank", 0),
                         "is_active": True, # Reactivate them if they returned!
                     }
                 )

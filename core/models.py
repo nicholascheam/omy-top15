@@ -35,6 +35,7 @@ class Player(models.Model):
     avatar_url = models.URLField(max_length=255)
     country_code = models.CharField(max_length=2, default="MY")
     current_pp = models.IntegerField()
+    country_rank = models.IntegerField(default=0, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     last_refreshed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)

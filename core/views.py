@@ -5,6 +5,7 @@ import secrets
 import os
 import io
 import zipfile
+import json
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.utils import timezone
@@ -130,15 +131,12 @@ def vote(request):
     
     if active_cycle.end_time <= timezone.now():
         if request.method == "POST":
-            # If they try to submit data after the deadline, block it with a 403
-            return HttpResponseForbidden("Voting has closed for this cycle. You can no longer submit or edit your ballot.")
+            return HttpResponseForbidden("Voting has closed for this cycle.")
         else:
-            # If they just visit the page, show a closed message
             return HttpResponse("<h2>Voting is Closed</h2><p>The deadline for this cycle has passed.</p>", status=403)
 
     existing_ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
     
-    # If they already voted and are just visiting /vote, redirect to my_ballot
     if existing_ballot and request.method == "GET" and not request.GET.get("edit"):
         return redirect("my_ballot")
 
@@ -150,110 +148,71 @@ def vote(request):
             comments_data = form.cleaned_data.get("comments") or {}
 
             player_ids = [entry["player_id"] for entry in entries_data]
-
             if Player.objects.filter(id__in=player_ids, osu_user_id=request.osu_user.osu_user_id).exists():
-
-                return HttpResponseForbidden("You cannot vote for yourself.")
-
-            with transaction.atomic():
-                # Run the flags
-                flag_reason = check_ballot_flags(request, entries_data, comments_data, active_cycle)
-
-                # 1. Create or get the ballot
-                ballot, created = Ballot.objects.update_or_create(
-                    user=request.osu_user, 
-                    cycle=active_cycle, 
-                    defaults={"flag_reason": flag_reason}
-                )
-                
-                # --- NEW: Capture old entries BEFORE deleting them ---
-                old_entries = []
-                if not created:
-                    old_entries = list(ballot.entries.values("player_id", "rank_position", "points"))
-                # ------------------------------------------------------
-
-                # 2. Delete old entries
-                ballot.entries.all().delete()
-                
-                # 3. Bulk create the new entries
-                new_entries = []
-                for entry in entries_data:
-                    points = 16 - int(entry["rank"])
-                    new_entries.append(
-                        BallotEntry(
-                            ballot=ballot,
-                            player_id=entry["player_id"],
-                            rank_position=int(entry["rank"]),
-                            points=points
-                        )
+                form.add_error(None, "You cannot vote for yourself.")
+            else:
+                with transaction.atomic():
+                    flag_reason = check_ballot_flags(request, entries_data, comments_data, active_cycle)
+                    ballot, created = Ballot.objects.update_or_create(
+                        user=request.osu_user, cycle=active_cycle, defaults={"flag_reason": flag_reason}
                     )
-                BallotEntry.objects.bulk_create(new_entries)
+                    ballot.entries.all().delete()
+                    
+                    new_entries = [BallotEntry(ballot=ballot, player_id=e["player_id"], rank_position=int(e["rank"]), points=16-int(e["rank"])) for e in entries_data]
+                    BallotEntry.objects.bulk_create(new_entries)
 
-                # 4. Handle comments
-                for p_id_str, body in comments_data.items():
-                    if body.strip():
-                        Comment.objects.update_or_create(
-                            user=request.osu_user,
-                            player_id=int(p_id_str),
-                            cycle=active_cycle,
-                            defaults={"body": body}
-                        )
+                    for p_id_str, body in comments_data.items():
+                        if body.strip():
+                            Comment.objects.update_or_create(user=request.osu_user, player_id=int(p_id_str), cycle=active_cycle, defaults={"body": body})
 
-                # 5. AUDIT LOG
-                snapshot = {
-                    "entries": entries_data,
-                    "comments": comments_data
-                }
-                
-                if created:
-                    BallotAudit.objects.create(
-                        ballot=ballot,
-                        action="create",
-                        actor=request.osu_user,
-                        snapshot=snapshot
-                    )
-                else:
-                    # --- NEW: Audit on Edit ---
-                    BallotAudit.objects.create(
-                        ballot=ballot,
-                        action="edit",
-                        actor=request.osu_user,
-                        snapshot={
-                            "before": old_entries,
-                            "after": snapshot
-                        }
-                    )
+                    if created:
+                        BallotAudit.objects.create(ballot=ballot, action="create", actor=request.osu_user, snapshot={"entries": entries_data, "comments": comments_data})
+                    else:
+                        BallotAudit.objects.create(ballot=ballot, action="edit", actor=request.osu_user, snapshot={"entries": entries_data, "comments": comments_data})
 
-            return redirect("/my-ballot?submitted=1")
+                return redirect("/my-ballot?submitted=1")
+
+        # IF FORM FAILS: Re-fetch the data so the JS doesn't clear the screen
+        try:
+            entries_data = json.loads(request.POST.get("entries", "[]"))
+            comments_data = json.loads(request.POST.get("comments", "{}"))
+        except:
+            entries_data, comments_data = [], {}
+
+        existing_entries = []
+        for entry in entries_data:
+            p = Player.objects.filter(id=entry["player_id"]).first()
+            if p:
+                existing_entries.append({
+                    "player_id": p.id, "osu_user_id": p.osu_user_id, "rank": entry["rank"],
+                    "username": p.username, "pp": p.current_pp, "avatar_url": p.avatar_url, "country_rank": p.country_rank
+                })
+        
+        return render(request, "vote.html", {
+            "form": form, "cycle": active_cycle, "is_edit": True,
+            "existing_entries": existing_entries, "existing_comments": comments_data,
+            "form_errors": form.errors # Pass errors to template
+        })
     else:
-        # GET request: We pass 'is_edit' to the template
+        # GET request
         is_edit = request.GET.get("edit") == "1" and existing_ballot is not None
         form = BallotForm(request=request, cycle=active_cycle)
-        
-        existing_entries = []
-        existing_comments = {}
+        existing_entries, existing_comments = [], {}
         
         if is_edit:
-            # Fetch the current entries and comments
             for entry in existing_ballot.entries.select_related("player").all():
                 existing_entries.append({
-                    "player_id": entry.player.id,
-                    "osu_user_id": entry.player.osu_user_id,
-                    "rank": entry.rank_position,
-                    "username": entry.player.username,
-                    "pp": entry.player.current_pp,
-                    "avatar_url": entry.player.avatar_url
+                    "player_id": entry.player.id, "osu_user_id": entry.player.osu_user_id,
+                    "rank": entry.rank_position, "username": entry.player.username,
+                    "pp": entry.player.current_pp, "avatar_url": entry.player.avatar_url,
+                    "country_rank": entry.player.country_rank
                 })
-            
             comments = Comment.objects.filter(user=request.osu_user, cycle=active_cycle)
             existing_comments = {c.player_id: c.body for c in comments}
 
     return render(request, "vote.html", {
-        "form": form, 
-        "cycle": active_cycle, 
-        "is_edit": is_edit if request.method == "GET" else False,
-        "existing_entries": existing_entries if request.method == "GET" else [],
-        "existing_comments": existing_comments if request.method == "GET" else {}
+        "form": form, "cycle": active_cycle, "is_edit": is_edit,
+        "existing_entries": existing_entries, "existing_comments": existing_comments
     })
 
 @osu_login_required
@@ -320,6 +279,7 @@ def search_players(request):
             "osu_user_id": p.osu_user_id,
             "username": p.username,
             "pp": p.current_pp,
+	    "country_rank": p.country_rank,
             "avatar_url": p.avatar_url
         }
         for p in players

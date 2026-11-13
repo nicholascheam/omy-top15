@@ -3,12 +3,20 @@
 
 {% block content %}
     <!-- NEW: Pass the user's ID to JavaScript -->
-    <script>
-        const CURRENT_OSU_ID = "{{ request.osu_user.osu_user_id }}";
-    </script>
+    <div class="container">
+	<script>
+	    const CYCLE_ID = "{{ cycle.id }}";
+	    const CURRENT_OSU_ID = "{{ request.osu_user.osu_user_id }}";
+	</script>
+    </div>
 
     <div class="container-wide">
-        <h2>{% if is_edit %}Edit Your Ballot{% else %}Vote for your Top 15{% endif %} - {{ cycle.name }}</h2>
+        <h2>{% if is_edit %}Edit Your Vote{% else %}Vote for your Top 15{% endif %} - {{ cycle.name }}</h2>
+	{% if form_errors %}
+        <div style="color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <strong>Error saving your vote:</strong> {{ form_errors }}
+        </div>
+    	{% endif %}
         <p>Voting ends at: {{ cycle.end_time }}</p>
 
         <div class="vote-container">
@@ -40,13 +48,13 @@
             <div class="sticky-submit">
                 <div id="form-errors" style="color: red; font-weight: bold; margin-bottom: 10px; display: none;"></div>
                 <button type="submit" id="submit-btn" class="btn" style="background-color: #28a745; font-size: 16px;">
-                    {% if is_edit %}Update Ballot{% else %}Submit Ballot{% endif %}
+                    {% if is_edit %}Update Vote{% else %}Submit Vote{% endif %}
                 </button>
             </div>
         </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
     {% if is_edit %}
         {{ existing_entries|json_script:"existing-entries" }}

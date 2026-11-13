@@ -2,39 +2,47 @@
 {% load static %}
 
 {% block content %}
-    <div class="card" style="text-align: center;">
-        <h2>Welcome to the Malaysian osu! Top 15 Voting!</h2>
-        <p>Vote for your favorite Malaysian players to help them reach the Top 15!</p>
+<div class="container-wide">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        
+        <!-- LEFT COLUMN: Status & Call to Action -->
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center; text-align: center; padding: 40px 20px;">
+            <h2 style="font-size: 2rem; margin-bottom: 10px;">osu! Malaysia Top 15</h2>
+            <p style="font-size: 1.1em; color: #888;">The community's definitive ranking of the best players in Malaysia.</p>
 
-        {% if active_cycle %}
-            <div style="background: var(--input-bg); padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <h3>Voting is Open: {{ active_cycle.name }}</h3>
-                <p>Deadline: <strong>{{ active_cycle.end_time }}</strong></p>
-                <div id="countdown" data-end-time="{{ active_cycle.end_time|date:'c' }}" style="font-size: 1.2em; font-weight: bold; color: #ff66aa; margin-top: 10px;">
+            {% if active_cycle %}
+                <div style="background: var(--input-bg); padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid var(--border-color);">
+                    <h3 style="margin-top: 0;">Voting is Open!</h3>
+                    <p style="font-size: 0.9em; margin-bottom: 15px;">Deadline: <strong>{{ active_cycle.end_time|date:"F j, Y, P" }}</strong></p>
+                    <div id="countdown" data-end-time="{{ active_cycle.end_time|date:'c' }}" style="font-size: 1.5em; font-weight: bold; color: #ff66aa;"></div>
                 </div>
 
-            {% if not is_logged_in %}
-                <a href="{% url 'login' %}" class="btn">Login with osu! to Vote</a>
-            {% elif has_ballot %}
-                <a href="{% url 'my_ballot' %}" class="btn" style="background-color: #28a745;">View Your Ballot</a>
+                {% if not is_logged_in %}
+                    <a href="{% url 'login' %}" class="btn" style="font-size: 1.2rem; padding: 15px 30px;">Login with osu! to Vote</a>
+                {% elif has_ballot %}
+                    <a href="{% url 'my_ballot' %}" class="btn" style="background-color: #28a745; font-size: 1.2rem; padding: 15px 30px;">View Your Vote</a>
+                {% else %}
+                    <a href="{% url 'vote' %}" class="btn" style="font-size: 1.2rem; padding: 15px 30px;">Cast Your Vote Now</a>
+                {% endif %}
             {% else %}
-                <a href="{% url 'vote' %}" class="btn">Cast Your Vote Now</a>
+                <p style="color: #dc3545; font-weight: bold; font-size: 1.2em;">There is no active voting cycle right now.</p>
             {% endif %}
-        {% else %}
-            <p style="color: #dc3545; font-weight: bold;">There is no active voting cycle right now. Check back later!</p>
-        {% endif %}
-    </div>
+        </div>
 
-    <div class="card">
-        <h3>Rules & Guidelines</h3>
-        <ul class="rules-list">
-            <li>You must log in with your osu! account to vote.</li>
-            <li>Your account must be created before January 1, 2026.</li>
-            <li>Select exactly 15 players and rank them from 1 to 15.</li>
-            <li>You can optionally add a comment to each player (max 500 characters).</li>
-            <li>You can edit your ballot until the deadline.</li>
-        </ul>
+        <!-- RIGHT COLUMN: Rules -->
+        <div class="card" style="padding: 40px 30px;">
+            <h3 style="font-size: 1.5rem; border-bottom: 2px solid #ff66aa; padding-bottom: 10px; margin-bottom: 20px;">Rules & Guidelines</h3>
+            <ul class="rules-list" style="font-size: 1.1em; line-height: 1.8;">
+                <li>You must log in with your osu! account to vote.</li>
+                <li>Your account must be created before <strong>January 1, 2026</strong>.</li>
+                <li>Select exactly <strong>15 players</strong> and rank them from 1 to 15.</li>
+                <li>You can optionally add a comment to each player (max 500 characters).</li>
+                <li>You can edit your vote as many times as you want until the deadline.</li>
+            </ul>
+        </div>
+
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

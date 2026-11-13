@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <div class="container">
     <script>
         function copyShareLink(token) {
             const url = window.location.origin + '/s/' + token;
@@ -13,7 +14,7 @@
     <!-- SUCCESS BANNER -->
     {% if request.GET.submitted == '1' %}
         <div style="background-color: #d4edda; color: #155724; padding: 20px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 5px; text-align: center;">
-            <h3 style="margin-top: 0;">🎉 Success! Your ballot has been saved.</h3>
+            <h3 style="margin-top: 0;">🎉 Success! Your Vote has been saved.</h3>
             
             {% if has_active_link %}
                 <p>Share your Top 15 with your friends on Discord!</p>
@@ -32,11 +33,11 @@
         </div>
     {% endif %}
 
-    <h2>My Ballot - {{ cycle.name }}</h2>
+    <h2>My Vote - {{ cycle.name }}</h2>
     
     {% if not ballot %}
         <div style="text-align: center; padding: 50px; border: 1px solid #ddd; margin-top: 20px;">
-            <h3>You haven't submitted a ballot yet!</h3>
+            <h3>You haven't submitted a Vote yet!</h3>
             <p>You need to select 15 players to participate.</p>
             <a href="{% url 'vote' %}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Go to Voting Page</a>
         </div>
@@ -46,25 +47,23 @@
         
         <!-- Edit & Share Buttons -->
         <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <a href="{% url 'edit_ballot' %}" style="padding: 8px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;">Edit Ballot</a>
+            <a href="{% url 'edit_ballot' %}" style="display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: 600;">Edit Vote</a>
 
-            <!-- If an active link exists, show Copy, View, and Revoke -->
             {% if has_active_link %}
-                <button type="button" onclick="copyShareLink('{{ share_link.token }}')" style="padding: 8px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">📋 Copy Link</button>
+                <button type="button" onclick="copyShareLink('{{ share_link.token }}')" style="display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">📋 Copy Link</button>
                 
-                <a href="/s/{{ share_link.token }}" target="_blank" style="padding: 8px 15px; background-color: #f8f9fa; color: #333; border: 1px solid #ccc; text-decoration: none; border-radius: 5px;">↗ View Public Ballot</a>
+                <a href="/s/{{ share_link.token }}" target="_blank" style="display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background-color: #f8f9fa; color: #333; border: 1px solid #ccc; text-decoration: none; border-radius: 5px; font-weight: 600;">↗ View Public Vote</a>
 
                 <form method="POST" action="{% url 'revoke_share' %}" style="margin: 0;">
                     {% csrf_token %}
-                    <button type="submit" style="padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">🛑 Revoke Link</button>
+                    <button type="submit" style="display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">🛑 Revoke Link</button>
                 </form>
             {% endif %}
 
-            <!-- Always show Generate/Rotate button -->
             <form method="POST" action="{% url 'create_share' %}" style="margin: 0;">
                 {% csrf_token %}
-                <button type="submit" style="padding: 8px 15px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    {% if has_active_link %}🔄 Generate New Link{% else %}🔗 Generate Share Link{% endif %}
+                <button type="submit" style="display: inline-flex; align-items: center; height: 40px; padding: 0 20px; background-color: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
+                    {% if has_active_link %}🔄 New Link{% else %}🔗 Generate Link{% endif %}
                 </button>
             </form>
         </div>
@@ -83,7 +82,10 @@
                     <td style="padding: 10px; font-weight: bold; font-size: 1.2em;">#{{ entry.rank_position }}</td>
                     <td style="padding: 10px;">
                         <img src="{{ entry.player.avatar_url }}" alt="avatar" style="width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 8px;">
-                        <strong>{{ entry.player.username }}</strong> ({{ entry.player.current_pp }}pp)
+			    <strong>{{ entry.player.username }}</strong> 
+				<span style="color: #888; font-size: 0.9em; margin-left: 5px;">
+    				    {% if entry.player.country_rank %}#{{ entry.player.country_rank }} MY • {% endif %}{{ entry.player.current_pp }}pp
+				</span>
                     </td>
                     <td style="padding: 10px; color: #555; font-style: italic; max-width: 300px; word-wrap: break-word;">
                         {% if entry.comment_body %}
@@ -97,4 +99,5 @@
             </tbody>
         </table>
     {% endif %}
+    </div>
 {% endblock %}

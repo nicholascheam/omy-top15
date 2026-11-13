@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block content %}
+    <div class="container">
     <div class="card" style="text-align: center; margin-bottom: 20px;">
         <img src="{% static 'img/malaysia_osu.jpg' %}" alt="osu! Malaysia" style="max-width: 100%; max-height: 350px; object-fit: cover; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         <p style="font-size: 0.9em; color: var(--text-color); margin-top: 15px; font-style: italic;">osu! Malaysia 2025 meetup</p>
@@ -14,8 +15,8 @@
 
     <div class="card">
         <h2>How the Point System Works</h2>
-        <p>When you submit a ballot, your #1 pick receives <strong>15 points</strong>, your #2 pick receives <strong>14 points</strong>, down to your #15 pick receiving <strong>1 point</strong>.</p>
-        <p><em>Anti-Bias Measure (Trimmed Rankings):</em> To prevent extreme outlier votes from skewing the results, we generate a "Trimmed" ranking in the final spreadsheet. This drops the highest and lowest points awarded to every player before calculating the final average.</p>
+        <p>When you submit a vote, your #1 pick receives <strong>15 points</strong>, your #2 pick receives <strong>14 points</strong>, down to your #15 pick receiving <strong>1 point</strong>.</p>
+        <p><em>Anti-Bias Measure (Trimmed Rankings):</em> To prevent extreme outlier votes from skewing the results, we generate a "Trimmed" ranking in the final spreadsheet. This drops the highest and lowest points awarded to every player before calculating the final sum.</p>
         <p><strong>Example:</strong> If a player receives: <code>1, 5, 2, 5, 3, 1, 9, 10, 10, 7, 6</code>. The <code>1</code> (lowest) and <code>10</code> (highest) are removed, and the rest are summed for a more accurate representation.</p>
     </div>
 
@@ -40,5 +41,6 @@
             </tr>
         </table>
         <p style="margin-top: 15px; font-size: 0.9em; color: #888;">* Dates are subject to change. Keep an eye on our Discord for announcements!</p>
+    </div>
     </div>
 {% endblock %}
