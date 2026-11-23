@@ -62,8 +62,14 @@ def fetch_user_pp(osu_user_id):
     }
     url = f"https://osu.ppy.sh/api/v2/users/{osu_user_id}/osu"
     
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("statistics", {}).get("pp", 0.0)
+    try:
+        # Give up after 10 seconds
+        response = requests.get(url, headers=headers, timeout=10) 
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("statistics", {}).get("pp", 0.0)
+    except requests.RequestException as e:
+        print(f"Error fetching PP for {osu_user_id}: {e}")
+        return None # Return None if it fails
+        
     return None

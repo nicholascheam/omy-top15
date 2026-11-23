@@ -7,7 +7,7 @@ from core.models import Player, Ballot, VotingCycle
 from core.osu import fetch_user_pp
 
 def refresh_final_pp(cycle):
-    # Get all unique players who received at least one vote in this cycle
+    """Step 76: Fetches the current PP for every player voted for in this cycle."""
     voted_player_ids = Ballot.objects.filter(cycle=cycle).values_list("entries__player_id", flat=True).distinct()
     players = Player.objects.filter(id__in=voted_player_ids)
     
@@ -18,6 +18,7 @@ def refresh_final_pp(cycle):
             player.current_pp = int(final_pp)
             player.save()
             updated_count += 1
+        # If final_pp is None, just skip them and keep their old PP
             
     return updated_count
 
