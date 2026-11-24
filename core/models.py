@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MaxLengthValidator
+from django.utils import timezone
 
 class OsuUser(models.Model):
     osu_user_id = models.BigIntegerField(unique=True, db_index=True)
@@ -28,6 +29,23 @@ class VotingCycle(models.Model):
 
     def __str__(self):
         return self.name
+    @classmethod
+    def get_active(cls):
+        """Returns the active cycle, automatically flipping statuses based on time."""
+        now = timezone.now()
+        
+        # 1. Auto-close any active cycles whose end_time has passed
+        cls.objects.filter(status="active", end_time__lte=now).update(status="closed")
+        
+        # 2. Auto-activate any draft cycles whose start_time has arrived
+        starting = cls.objects.filter(status="draft", start_time__lte=now, end_time__gt=now).first()
+        if starting:
+            starting.status = "active"
+            starting.save()
+            return starting
+            
+        # 3. Return the currently active cycle if one exists
+        return cls.objects.filter(status="active", end_time__gt=now).first()
 
 class Player(models.Model):
     osu_user_id = models.BigIntegerField(unique=True, db_index=True)

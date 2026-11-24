@@ -24,9 +24,18 @@
                 {% else %}
                     <a href="{% url 'vote' %}" class="btn" style="font-size: 1.2rem; padding: 15px 30px;">Cast Your Vote Now</a>
                 {% endif %}
-            {% else %}
-                <p style="color: #dc3545; font-weight: bold; font-size: 1.2em;">There is no active voting cycle right now.</p>
-            {% endif %}
+                {% elif next_cycle %}
+            <div style="background: var(--input-bg); padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid var(--border-color);">
+                <h3 style="margin-top: 0;">Next Cycle Starting Soon!</h3>
+                <p style="font-size: 0.9em; margin-bottom: 15px;"><strong>{{ next_cycle.name }}</strong></p>
+                <p style="font-size: 0.9em; margin-bottom: 15px;">Starts: <strong>{{ next_cycle.start_time|date:"F j, Y, P" }}</strong></p>
+                <div id="countdown-next" data-end-time="{{ next_cycle.start_time|date:'c' }}" style="font-size: 1.5em; font-weight: bold; color: #ff66aa;"></div>
+            </div>
+            <p style="color: #888;">Get your picks ready! The voting page will unlock automatically.</p>
+
+        {% else %}
+            <p style="color: #dc3545; font-weight: bold; font-size: 1.2em;">There is no active or upcoming voting cycle right now.</p>
+        {% endif %}
         </div>
 
         <!-- RIGHT COLUMN: Rules -->

@@ -31,16 +31,21 @@ from core.osu import (
 logger = logging.getLogger("core")
 
 def home(request):
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     has_ballot = False
     is_logged_in = "osu_user_id" in request.session
+    next_cycle = None
     
     if active_cycle and is_logged_in:
         user_id = request.session["osu_user_id"]
         has_ballot = Ballot.objects.filter(user_id=user_id, cycle=active_cycle).exists()
+    elif not active_cycle:
+        # Look for the next draft cycle that starts in the future
+        next_cycle = VotingCycle.objects.filter(status="draft", start_time__gt=timezone.now()).order_by("start_time").first()
 
     return render(request, "home.html", {
         "active_cycle": active_cycle,
+        "next_cycle": next_cycle,
         "has_ballot": has_ballot,
         "is_logged_in": is_logged_in
     })
@@ -122,7 +127,7 @@ def logout_view(request):
 @osu_login_required
 @rate_limit("votes", max_requests=10, window_seconds=3600)
 def vote(request):
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     if not active_cycle:
         return HttpResponse("There is no active voting cycle right now.", status=404)
 
@@ -218,7 +223,7 @@ def vote(request):
 @osu_login_required
 def my_ballot(request):
     # 1. Find the active cycle
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     if not active_cycle:
         return HttpResponse("There is no active voting cycle right now.", status=404)
 
@@ -308,7 +313,7 @@ def submit_comment(request):
     except Player.DoesNotExist:
         return JsonResponse({"error": "Player not found or inactive"}, status=404)
 
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     if not active_cycle:
         return JsonResponse({"error": "No active cycle"}, status=404)
 
@@ -377,7 +382,7 @@ def create_share(request):
     if request.method != "POST":
         return HttpResponse("POST required", status=405)
 
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     if not active_cycle:
         return HttpResponse("No active cycle", status=404)
 
@@ -423,7 +428,7 @@ def revoke_share(request):
     if request.method != "POST":
         return HttpResponse("POST required", status=405)
 
-    active_cycle = VotingCycle.objects.filter(status="active").first()
+    active_cycle = VotingCycle.get_active()
     ballot = Ballot.objects.filter(user=request.osu_user, cycle=active_cycle).first()
     
     if ballot:
